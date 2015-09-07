@@ -40,6 +40,9 @@
 
 (require 'cl-lib)
 (require 'f)
+(require 'subr-x)
+
+;; Basic Functionality
 
 (defgroup vimish-fold nil
   "Fold text like in Vim"
@@ -157,7 +160,6 @@ This includes fringe bitmaps and faces."
     (vimish-fold--read-only t (max 1 (1- beg)) end)
     (let ((overlay (make-overlay beg end nil t nil)))
       (overlay-put overlay 'type 'vimish-fold)
-      (overlay-put overlay 'invisible t)
       (overlay-put overlay 'keymap vimish-fold-keymap)
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
@@ -195,8 +197,9 @@ This includes fringe bitmaps and faces."
 Elements of LIST should be of the following form:
 
   (BEG END)"
-  (dolist (item list)
-    (apply #'vimish-fold item)))
+  (save-excursion
+    (dolist (item list)
+      (apply #'vimish-fold item))))
 
 ;;;###autoload
 (defun vimish-fold-refold ()
@@ -230,7 +233,7 @@ be created automatically."
   :tag   "Directory for Folding Info"
   :type  'directory)
 
-(defun vimish-fold-make-file-name (file)
+(defun vimish-fold--make-file-name (file)
   "Return path to file where information about folding in FILE is written."
   (f-expand
    (replace-regexp-in-string
@@ -243,13 +246,45 @@ be created automatically."
   "Save folds in BUFFER-OR-NAME, which should have associated file.
 
 BUFFER-OR-NAME defaults to current buffer."
-  )
+  (with-current-buffer (or buffer-or-name (current-buffer))
+    (let ((filename (buffer-file-name))
+          regions)
+      (when filename
+        (dolist (overlay (overlays-in (point-min) (point-max)))
+          (when (eq (overlay-get overlay 'type) 'vimish-fold)
+            (push (list (overlay-start overlay)
+                        (overlay-end   overlay))
+                  regions)))
+        (let ((fold-file (vimish-fold--make-file-name filename)))
+          (if regions
+              (with-temp-buffer
+                (insert (format ";;; -*- coding: %s -*-\n"
+                                (symbol-name coding-system-for-write)))
+                (pp regions (current-buffer))
+                (let ((version-control 'never))
+                  (condition-case nil
+                      (progn
+                        (f-mkdir vimish-fold-dir)
+                        (write-region (point-min) (point-max) fold-file)
+                        nil)
+                    (file-error
+                     (message "Vimish Fold: can't write %s" fold-file)))
+                  (kill-buffer (current-buffer))))
+            (when (f-exists? fold-file)
+              (f-delete fold-file))))))))
 
 (defun vimish-fold--restore-folds (&optional buffer-or-name)
   "Restore folds in BUFFER-OR-NAME, if they have been saved.
 
 BUFFER-OR-NAME defaults to current buffer."
-  )
+  (with-current-buffer (or buffer-or-name (current-buffer))
+    (when-let ((filename (buffer-file-name))
+               (fold-file (vimish-fold--make-file-name filename)))
+      (when (f-readable? fold-file)
+        (vimish-fold--restore-from
+         (with-temp-buffer
+           (insert-file-contents fold-file)
+           (read (buffer-string))))))))
 
 ;; TODO use minor mode to make it persistent between sessions
 
