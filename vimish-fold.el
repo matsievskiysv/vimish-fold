@@ -293,13 +293,13 @@ BUFFER-OR-NAME defaults to current buffer.
 
 Return T is some folds have been restored and NIL otherwise."
   (with-current-buffer (or buffer-or-name (current-buffer))
-    (when-let ((filename (buffer-file-name))
-               (fold-file (vimish-fold--make-file-name filename)))
-      (when (f-readable? fold-file)
-        (vimish-fold--restore-from
-         (with-temp-buffer
-           (insert-file-contents fold-file)
-           (read (buffer-string))))))))
+    (when (buffer-file-name)
+      (let ((fold-file (vimish-fold--make-file-name (buffer-file-name))))
+        (when (and fold-file (f-readable? fold-file))
+          (vimish-fold--restore-from
+           (with-temp-buffer
+             (insert-file-contents fold-file)
+             (read (buffer-string)))))))))
 
 (defun vimish-fold--kill-emacs-hook ()
   "Traverse all buffers and try to save their folds."
