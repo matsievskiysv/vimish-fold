@@ -50,9 +50,9 @@ Create binding for some of/all these functions:
 
 * `vimish-fold-avy` — use `avy` to fold your text!
 
-If you want persistent folds you can turn `vimish-fold-mode` selectively for
-modes where you want to have persistent folding, so simply activate it
-everywhere:
+You can turn `vimish-fold-mode` selectively for modes where you want to have
+persistent folding, or simply activate it everywhere:
+
 
 ```emacs-lisp
 (vimish-fold-global-mode 1)
