@@ -71,7 +71,7 @@ always.
 This work is based on Magnar Sveen's `fold-this` package to some extent, so
 I think I should include him as an author, thanks Magnar!
 
-Copyright © 2015 Mark Karpov
+Copyright © 2015 Mark Karpov<br>
 Copyright © 2012–2013 Magnar Sveen
 
 Distributed under GNU GPL, version 3.
