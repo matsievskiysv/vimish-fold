@@ -170,6 +170,10 @@ This includes fringe bitmaps and faces."
   (cl-destructuring-bind (beg . end) (vimish-fold--correct-region beg end)
     (when (= beg end)
       (error "Nothing to fold"))
+    (dolist (overlay (overlays-in beg end))
+      (when (eq (overlay-get overlay 'type) 'vimish-fold)
+        (goto-char (overlay-start overlay))
+        (error "Something is already folded here")))
     (vimish-fold--read-only t (max 1 (1- beg)) end)
     (let ((overlay (make-overlay beg end nil t nil)))
       (overlay-put overlay 'type 'vimish-fold)
@@ -202,7 +206,9 @@ This includes fringe bitmaps and faces."
   (interactive)
   (setq-local vimish-fold--recently-unfolded nil)
   (dolist (overlay (overlays-in (point-min) (point-max)))
-    (vimish-fold--unfold overlay)))
+    (vimish-fold--unfold overlay))
+  (unless vimish-fold--recently-unfolded
+    (message "Nothing to unfold")))
 
 (defun vimish-fold--restore-from (list)
   "Restore folds in current buffer form LIST.
@@ -212,7 +218,8 @@ Elements of LIST should be of the following form:
   (BEG END)"
   (save-excursion
     (dolist (item list)
-      (apply #'vimish-fold item))))
+      (apply #'vimish-fold item))
+    (setq-local vimish-fold--recently-unfolded nil)))
 
 ;;;###autoload
 (defun vimish-fold-refold ()
