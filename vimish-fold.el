@@ -1,8 +1,10 @@
 ;;; vimish-fold.el --- Fold text like in Vim -*- lexical-binding: t; -*-
 ;;
 ;; Copyright © 2015 Mark Karpov <markkarpov@openmailbox.org>
+;; Copyright © 2012–2013 Magnar Sveen <magnars@gmail.com>
 ;;
 ;; Author: Mark Karpov <markkarpov@openmailbox.org>
+;; Author: Magnar Sveen <magnars@gmail.com>
 ;; URL: https://github.com/mrkkrp/vimish-fold
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "24.4") (cl-lib "0.5") (f "0.18.0"))
@@ -276,7 +278,9 @@ BUFFER-OR-NAME defaults to current buffer."
 (defun vimish-fold--restore-folds (&optional buffer-or-name)
   "Restore folds in BUFFER-OR-NAME, if they have been saved.
 
-BUFFER-OR-NAME defaults to current buffer."
+BUFFER-OR-NAME defaults to current buffer.
+
+Return T is some folds have been restored and NIL otherwise."
   (with-current-buffer (or buffer-or-name (current-buffer))
     (when-let ((filename (buffer-file-name))
                (fold-file (vimish-fold--make-file-name filename)))
@@ -286,23 +290,33 @@ BUFFER-OR-NAME defaults to current buffer."
            (insert-file-contents fold-file)
            (read (buffer-string))))))))
 
-;; TODO use minor mode to make it persistent between sessions
+(defun vimish-fold--kill-emacs-hook ()
+  "Traverse all buffers and try to save their folds."
+  (mapc #'vimish-fold--save-folds (buffer-list)))
 
 ;;;###autoload
-;; (define-minor-mode vimish-fold-mode
-;;   "Toggle vimish-fold-mode minor mode.
+(define-minor-mode vimish-fold-mode
+  "Toggle `vimish-fold-mode' minor mode.
 
-;; With a prefix argument ARG, enable ace-popup-menu mode if ARG is
-;; positive, and disable it otherwise.  If called from Lisp, enable
-;; the mode if ARG is omitted or NIL, and toggle it if ARG is
-;; `toggle'.
+With a prefix argument ARG, enable `vimish-fold-mode' mode if ARG
+is positive, and disable it otherwise.  If called from Lisp,
+enable the mode if ARG is omitted or NIL, and toggle it if ARG is
+`toggle'.
 
-;; "
-;;   )
+This minor mode sets hooks so when you `find-file' it calls
+`vimish-fold--restore-folds' and when you kill a file it calls
+`vimish-fold--save-folds'.
+
+For globalized version of this mode see `vimish-gold-global-mode'."
+  :global nil
+  (let ((fnc (if vimish-fold-mode #'add-hook #'remove-hook)))
+    (funcall fnc 'find-file-hook   #'vimish-fold--restore-folds)
+    (funcall fnc 'kill-buffer-hook #'vimish-fold--save-folds)
+    (funcall fnc 'kill-emacs-hook  #'vimish-fold--kill-emacs-hook)))
 
 ;;;###autoload
-;; (define-globalized-minor-mode vimish-fold-global-mode
-;;   )
+(define-globalized-minor-mode vimish-fold-global-mode
+  vimish-fold-mode vimish-fold-mode)
 
 (provide 'vimish-fold)
 
