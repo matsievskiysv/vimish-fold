@@ -46,7 +46,7 @@
 ;;
 ;; * it can refold just unfolded folds (oh, my);
 ;;
-;; * for fans of `avy` package: you can use `avy` to fold text with minimal
+;; * for fans of `avy' package: you can use `avy' to fold text with minimal
 ;;   number of key strokes!
 
 ;;; Code:
@@ -66,6 +66,10 @@
 (defface vimish-fold-overlay
   '((t (:inherit highlight)))
   "Face used to highlight the fold overlay.")
+
+(defface vimish-fold-mouse-face
+  '((t (:inherit highlight :weight bold)))
+  "Face to use when mouse hovers over folded text.")
 
 (defface vimish-fold-fringe
   '((t (:inherit font-lock-function-name-face)))
@@ -98,8 +102,6 @@ This is used by `vimish-fold-refold'.")
 
 (defvar vimish-fold-keymap (make-sparse-keymap)
   "Keymap which is active when point is placed on folded text.")
-
-(define-key vimish-fold-keymap (kbd "C-g") 'vimish-fold-unfold)
 
 (defun vimish-fold--correct-region (beg end)
   "Return a cons of corrected BEG and END.
@@ -150,6 +152,9 @@ If BUFFER is NIL, current buffer is used."
 This includes fringe bitmaps and faces."
   (overlay-put overlay 'display
                (propertize header 'face 'vimish-fold-overlay))
+  (overlay-put overlay 'pointer 'hand)
+  (overlay-put overlay 'mouse-face 'vimish-fold-mouse-face)
+  (overlay-put overlay 'help-echo "Click to unfold the text")
   (when vimish-fold-indication-mode
     (unless (memq vimish-fold-indication-mode
                   '(left-fringe right-fringe))
@@ -198,6 +203,10 @@ This includes fringe bitmaps and faces."
   (setq-local vimish-fold--recently-unfolded nil)
   (dolist (overlay (overlays-at (point)))
     (vimish-fold--unfold overlay)))
+
+(define-key vimish-fold-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
+(define-key vimish-fold-keymap (kbd "C-g")       #'vimish-fold-unfold)
+(define-key vimish-fold-keymap (kbd "RET")       #'vimish-fold-unfold)
 
 ;;;###autoload
 (defun vimish-fold-unfold-all ()
