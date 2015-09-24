@@ -96,7 +96,7 @@ If set to NIL, do not indicate folded text, just highlight it."
   :type 'string)
 
 (defvar vimish-fold--recently-unfolded nil
-  "List of (BEG END) lists represented recently unfolded regions.
+  "List of (BEG END) lists representing recently unfolded regions.
 
 This is used by `vimish-fold-refold'.")
 
