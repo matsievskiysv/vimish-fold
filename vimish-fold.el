@@ -96,9 +96,13 @@ If set to NIL, do not indicate folded text, just highlight it."
   :type 'string)
 
 (defcustom vimish-fold-header-width 80
-  "Width of header of folded region."
+  "Width of header of folded region.
+
+This can be a number or NIL.  If it's NIL value returned of
+`window-width' will be used."
   :tag  "Width of header of folded region"
-  :type 'integer)
+  :type '(choice (const   :tag "use window width")
+                 (integer :tag "width of fold header")))
 
 (defcustom vimish-fold-show-lines t
   "Whether to show number of lines folded in fold header."
@@ -159,7 +163,9 @@ If BUFFER is NIL, current buffer is used."
                  (<= (match-end 1)       end))
             (match-string-no-properties 1)
           vimish-fold-blank-fold-header)
-        (- vimish-fold-header-width (length info))
+        (- (or vimish-fold-header-width
+               (window-width))
+           (length info))
         nil
         32 ; space
         "…")
