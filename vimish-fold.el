@@ -149,7 +149,7 @@ If ON is NIL, make the text editable again."
 
 If BUFFER is NIL, current buffer is used."
   (let ((info (when vimish-fold-show-lines
-                (format "%d lines" (count-lines beg end)))))
+                (format "    %d lines" (count-lines beg end)))))
     (save-excursion
       (goto-char beg)
       (re-search-forward "^\\([[:blank:]]*.+\\)$")
@@ -162,7 +162,7 @@ If BUFFER is NIL, current buffer is used."
         (- vimish-fold-header-width (length info))
         nil
         32 ; space
-        "…     ")
+        "…")
        info))))
 
 (defun vimish-fold--apply-cosmetic (overlay header)
