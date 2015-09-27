@@ -172,7 +172,7 @@ This includes fringe bitmaps and faces."
   (interactive "r")
   (deactivate-mark)
   (cl-destructuring-bind (beg . end) (vimish-fold--correct-region beg end)
-    (when (= beg end)
+    (when (< (count-lines beg end) 2)
       (error "Nothing to fold"))
     (dolist (overlay (overlays-in beg end))
       (when (eq (overlay-get overlay 'type) 'vimish-fold)
