@@ -95,6 +95,16 @@ If set to NIL, do not indicate folded text, just highlight it."
   :tag  "Header of Blank Fold"
   :type 'string)
 
+(defcustom vimish-fold-header-width 80
+  "Width of header of folded region."
+  :tag  "Width of header of folded region"
+  :type 'integer)
+
+(defcustom vimish-fold-show-lines t
+  "Whether to show number of lines folded in fold header."
+  :tag  "Show number of lines folded"
+  :type 'boolean)
+
 (defvar vimish-fold--recently-unfolded nil
   "List of (BEG END) lists representing recently unfolded regions.
 
@@ -138,13 +148,22 @@ If ON is NIL, make the text editable again."
   "Extract folding header from region between BEG and END in BUFFER.
 
 If BUFFER is NIL, current buffer is used."
-  (save-excursion
-    (goto-char beg)
-    (re-search-forward "^\\([[:blank:]]*.+\\)$")
-    (if (and (>= (match-beginning 1) beg)
-             (<= (match-end 1)       end))
-        (match-string-no-properties 1)
-      vimish-fold-blank-fold-header)))
+  (let ((info (when vimish-fold-show-lines
+                (format "%d lines" (count-lines beg end)))))
+    (save-excursion
+      (goto-char beg)
+      (re-search-forward "^\\([[:blank:]]*.+\\)$")
+      (concat
+       (truncate-string-to-width
+        (if (and (>= (match-beginning 1) beg)
+                 (<= (match-end 1)       end))
+            (match-string-no-properties 1)
+          vimish-fold-blank-fold-header)
+        (- vimish-fold-header-width (length info))
+        nil
+        32 ; space
+        "…     ")
+       info))))
 
 (defun vimish-fold--apply-cosmetic (overlay header)
   "Make OVERLAY look according to user's settings displaying HEADER.
