@@ -282,6 +282,14 @@ Elements of LIST should be of the following form:
       (delete-overlay overlay))))
 
 ;;;###autoload
+(defun vimish-fold-delete-all ()
+  "Delete all folds in current buffer."
+  (interactive)
+  (dolist (overlay (overlays-in (point-min) (point-max)))
+    (when (vimish-fold--vimish-overlay-p overlay)
+      (delete-overlay overlay))))
+
+;;;###autoload
 (defun vimish-fold-toggle ()
   "Toggle fold at point."
   (interactive)
