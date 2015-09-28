@@ -109,11 +109,6 @@ This can be a number or NIL.  If it's NIL value returned of
   :tag  "Show number of lines folded"
   :type 'boolean)
 
-(defvar vimish-fold--recently-unfolded nil
-  "List of (BEG END) lists representing recently unfolded regions.
-
-This is used by `vimish-fold-refold'.")
-
 (defvar vimish-fold-keymap (make-sparse-keymap)
   "Keymap which is active when point is placed on folded text.")
 
@@ -171,6 +166,19 @@ If BUFFER is NIL, current buffer is used."
         "…")
        info))))
 
+(defun vimish-fold--setup-fringe (overlay)
+  "Setup fringe for OVERLAY according to user settings."
+  (when vimish-fold-indication-mode
+    (unless (memq vimish-fold-indication-mode
+                  '(left-fringe right-fringe))
+      (error "Invalid fringe side: %S"
+             vimish-fold-indication-mode))
+    (overlay-put overlay 'line-prefix
+                 (propertize "…" 'display
+                             (list vimish-fold-indication-mode
+                                   'empty-line
+                                   'vimish-fold-fringe)))))
+
 (defun vimish-fold--apply-cosmetic (overlay header)
   "Make OVERLAY look according to user's settings displaying HEADER.
 
@@ -180,16 +188,13 @@ This includes fringe bitmaps and faces."
   (overlay-put overlay 'pointer 'hand)
   (overlay-put overlay 'mouse-face 'vimish-fold-mouse-face)
   (overlay-put overlay 'help-echo "Click to unfold the text")
-  (when vimish-fold-indication-mode
-    (unless (memq vimish-fold-indication-mode
-                  '(left-fringe right-fringe))
-      (error "Invalid fringe side: %S"
-             vimish-fold-indication-mode))
-    (overlay-put overlay 'before-string
-                 (propertize "…" 'display
-                             (list vimish-fold-indication-mode
-                                   'empty-line
-                                   'vimish-fold-fringe)))))
+  (vimish-fold--setup-fringe overlay))
+
+(defun vimish-fold--vimish-overlay-p (overlay)
+  "Detect if given OVERLAY is created by this package."
+  (memq (overlay-get overlay 'type)
+        '(vimish-fold--folded
+          vimish-fold--unfolded)))
 
 ;;;###autoload
 (defun vimish-fold (beg end)
@@ -200,32 +205,31 @@ This includes fringe bitmaps and faces."
     (when (< (count-lines beg end) 2)
       (error "Nothing to fold"))
     (dolist (overlay (overlays-in beg end))
-      (when (eq (overlay-get overlay 'type) 'vimish-fold)
+      (when (vimish-fold--vimish-overlay-p overlay)
         (goto-char (overlay-start overlay))
-        (error "Something is already folded here")))
+        (error "Fold already exists here")))
     (vimish-fold--read-only t (max 1 (1- beg)) end)
     (let ((overlay (make-overlay beg end nil t nil)))
-      (overlay-put overlay 'type 'vimish-fold)
+      (overlay-put overlay 'type 'vimish-fold--folded)
       (overlay-put overlay 'keymap vimish-fold-keymap)
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
 
 (defun vimish-fold--unfold (overlay)
-  "Delete OVERLAY if its type is `vimish-fold'."
-  (when (eq (overlay-get overlay 'type) 'vimish-fold)
+  "Unfold fold found by its OVERLAY type `vimish-fold--folded'."
+  (when (eq (overlay-get overlay 'type) 'vimish-fold--folded)
     (let ((beg (overlay-start overlay))
           (end (overlay-end   overlay)))
       (vimish-fold--read-only nil (max 1 (1- beg)) end)
       (delete-overlay overlay)
-      (setq-local vimish-fold--recently-unfolded
-                  (cons (list beg end)
-                        vimish-fold--recently-unfolded)))))
+      (let ((unfolded (make-overlay beg end nil t nil)))
+        (overlay-put unfolded 'type 'vimish-fold--unfolded)
+        (vimish-fold--setup-fringe unfolded)))))
 
 ;;;###autoload
 (defun vimish-fold-unfold ()
-  "Delete all `vimish-fold' overlays at point."
+  "Delete all `vimish-fold--folded' overlays at point."
   (interactive)
-  (setq-local vimish-fold--recently-unfolded nil)
   (dolist (overlay (overlays-at (point)))
     (vimish-fold--unfold overlay)))
 
@@ -237,30 +241,56 @@ This includes fringe bitmaps and faces."
 (defun vimish-fold-unfold-all ()
   "Unfold all folds in current buffer."
   (interactive)
-  (setq-local vimish-fold--recently-unfolded nil)
   (dolist (overlay (overlays-in (point-min) (point-max)))
-    (vimish-fold--unfold overlay))
-  (unless vimish-fold--recently-unfolded
-    (message "Nothing to unfold")))
+    (vimish-fold--unfold overlay)))
 
 (defun vimish-fold--restore-from (list)
   "Restore folds in current buffer form LIST.
 
 Elements of LIST should be of the following form:
 
-  (BEG END)"
+  (BEG END &optional UNFOLDED)"
   (save-excursion
     (dolist (item list)
-      (apply #'vimish-fold item))
-    (setq-local vimish-fold--recently-unfolded nil)))
+      (cl-destructuring-bind (beg end . rest) item
+        (funcall #'vimish-fold beg end)
+        (when (car rest)
+          (goto-char beg)
+          (vimish-fold-unfold))))))
+
+(defun vimish-fold--refold (overlay)
+  "Refold fold found by its OVERLAY type `vimish-fold--unfolded'."
+  (when (eq (overlay-get overlay 'type) 'vimish-fold--unfolded)
+    (let* ((beg (overlay-start overlay))
+           (end (overlay-end   overlay)))
+      (delete-overlay overlay)
+      (vimish-fold beg end))))
 
 ;;;###autoload
 (defun vimish-fold-refold ()
-  "Refold recently unfolded folds."
+  "Refold unfolded fold at point."
   (interactive)
-  (if vimish-fold--recently-unfolded
-      (vimish-fold--restore-from vimish-fold--recently-unfolded)
-    (message "Nothing to refold")))
+  (dolist (overlay (overlays-at (point)))
+    (vimish-fold--refold overlay)))
+
+;;;###autoload
+(defun vimish-fold-delete ()
+  "Delete fold at point."
+  (interactive)
+  (dolist (overlay (overlays-at (point)))
+    (when (vimish-fold--vimish-overlay-p overlay)
+      (delete-overlay overlay))))
+
+;;;###autoload
+(defun vimish-fold-toggle ()
+  "Toggle fold at point."
+  (interactive)
+  (dolist (overlay (overlays-at (point)))
+    (let ((type (overlay-get overlay 'type)))
+      (when (eq type 'vimish-fold--folded)
+        (vimish-fold-unfold))
+      (when (eq type 'vimish-fold--unfolded)
+        (vimish-fold-refold)))))
 
 ;;;###autoload
 (defun vimish-fold-avy ()
@@ -304,9 +334,11 @@ BUFFER-OR-NAME defaults to current buffer."
           regions)
       (when filename
         (dolist (overlay (overlays-in (point-min) (point-max)))
-          (when (eq (overlay-get overlay 'type) 'vimish-fold)
+          (when (vimish-fold--vimish-overlay-p overlay)
             (push (list (overlay-start overlay)
-                        (overlay-end   overlay))
+                        (overlay-end   overlay)
+                        (eq (overlay-get overlay 'type)
+                            'vimish-fold--unfolded))
                   regions)))
         (let ((fold-file (vimish-fold--make-file-name filename)))
           (if regions

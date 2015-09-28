@@ -21,7 +21,7 @@ features:
 
 * it doesn't break indentation or something;
 
-* it can refold just unfolded folds (oh, my);
+* it can refold unfolded folds (oh, my);
 
 * for fans of `avy` package: you can use `avy` to fold text with minimal
   number of key strokes!
@@ -51,6 +51,10 @@ Create binding for some of/all these functions:
 * `vimish-fold-unfold-all` — nevertheless this may be useful;
 
 * `vimish-fold-refold` — yes, you can fold it back;
+
+* `vimish-fold-delete` — use it to permanently delete fold;
+
+* `vimish-fold-toggle` — toggle fold;
 
 * `vimish-fold-avy` — use `avy` to fold your text!
 
