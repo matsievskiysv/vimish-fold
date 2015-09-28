@@ -166,14 +166,16 @@ If BUFFER is NIL, current buffer is used."
         "…")
        info))))
 
-(defun vimish-fold--setup-fringe (overlay)
-  "Setup fringe for OVERLAY according to user settings."
+(defun vimish-fold--setup-fringe (overlay &optional prefix)
+  "Setup fringe for OVERLAY according to user settings.
+
+If PREFIX is not NIL, setup fringe for every line."
   (when vimish-fold-indication-mode
     (unless (memq vimish-fold-indication-mode
                   '(left-fringe right-fringe))
       (error "Invalid fringe side: %S"
              vimish-fold-indication-mode))
-    (overlay-put overlay 'line-prefix
+    (overlay-put overlay (if prefix 'line-prefix 'before-string)
                  (propertize "…" 'display
                              (list vimish-fold-indication-mode
                                    'empty-line
@@ -224,7 +226,7 @@ This includes fringe bitmaps and faces."
       (delete-overlay overlay)
       (let ((unfolded (make-overlay beg end nil t nil)))
         (overlay-put unfolded 'type 'vimish-fold--unfolded)
-        (vimish-fold--setup-fringe unfolded)))))
+        (vimish-fold--setup-fringe unfolded t)))))
 
 ;;;###autoload
 (defun vimish-fold-unfold ()
