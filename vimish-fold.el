@@ -279,21 +279,32 @@ Elements of LIST should be of the following form:
   (dolist (overlay (overlays-at (point)))
     (vimish-fold--refold overlay)))
 
+(defun vimish-fold--delete (overlay)
+  "Internal function used to delete folds represented by OVERLAY.
+
+If OVERLAY does not represent a fold, it's ignored."
+  (when (vimish-fold--vimish-overlay-p overlay)
+    (when (eq (overlay-get overlay 'type)
+              'vimish-fold--folded)
+      (vimish-fold--read-only
+       nil
+       (max 1 (1- (overlay-start overlay)))
+       (overlay-end overlay)))
+    (delete-overlay overlay)))
+
 ;;;###autoload
 (defun vimish-fold-delete ()
   "Delete fold at point."
   (interactive)
   (dolist (overlay (overlays-at (point)))
-    (when (vimish-fold--vimish-overlay-p overlay)
-      (delete-overlay overlay))))
+    (vimish-fold--delete overlay)))
 
 ;;;###autoload
 (defun vimish-fold-delete-all ()
   "Delete all folds in current buffer."
   (interactive)
   (dolist (overlay (overlays-in (point-min) (point-max)))
-    (when (vimish-fold--vimish-overlay-p overlay)
-      (delete-overlay overlay))))
+    (vimish-fold--delete overlay)))
 
 ;;;###autoload
 (defun vimish-fold-toggle ()
