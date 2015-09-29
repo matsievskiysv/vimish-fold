@@ -58,6 +58,10 @@ Create binding for some of/all these functions:
 * `vimish-fold-toggle` — toggle fold;
 
 * `vimish-fold-avy` — use `avy` to fold your text!
+* 
+
+The width of the fold headers could be be even width as your current window. Set  `vimish-fold-header-width` to `nil`, and 
+ `vimish-fold` will change the width of the fold headers to your current window. 
 
 You can turn `vimish-fold-mode` selectively for modes where you want to have
 persistent folding, or simply activate it everywhere:
