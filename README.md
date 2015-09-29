@@ -50,7 +50,8 @@ Create binding for some of/all these functions:
 
 * `vimish-fold-unfold-all` — nevertheless this may be useful;
 
-* `vimish-fold-refold` — yes, you can fold it back;
+* `vimish-fold-refold` — you can either bind this command or use
+  <kbd>C-g</kbd> to refold regions;
 
 * `vimish-fold-delete` — use it to permanently delete fold;
 

@@ -109,8 +109,11 @@ This can be a number or NIL.  If it's NIL value returned of
   :tag  "Show number of lines folded"
   :type 'boolean)
 
-(defvar vimish-fold-keymap (make-sparse-keymap)
+(defvar vimish-fold-folded-keymap (make-sparse-keymap)
   "Keymap which is active when point is placed on folded text.")
+
+(defvar vimish-fold-unfolded-keymap (make-sparse-keymap)
+  "Keymap which is active when point is placed on unfolded text.")
 
 (defun vimish-fold--correct-region (beg end)
   "Return a cons of corrected BEG and END.
@@ -213,7 +216,7 @@ This includes fringe bitmaps and faces."
     (vimish-fold--read-only t (max 1 (1- beg)) end)
     (let ((overlay (make-overlay beg end nil t nil)))
       (overlay-put overlay 'type 'vimish-fold--folded)
-      (overlay-put overlay 'keymap vimish-fold-keymap)
+      (overlay-put overlay 'keymap vimish-fold-folded-keymap)
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
 
@@ -226,6 +229,7 @@ This includes fringe bitmaps and faces."
       (delete-overlay overlay)
       (let ((unfolded (make-overlay beg end nil t nil)))
         (overlay-put unfolded 'type 'vimish-fold--unfolded)
+        (overlay-put unfolded 'keymap vimish-fold-unfolded-keymap)
         (vimish-fold--setup-fringe unfolded t)))))
 
 ;;;###autoload
@@ -235,9 +239,9 @@ This includes fringe bitmaps and faces."
   (dolist (overlay (overlays-at (point)))
     (vimish-fold--unfold overlay)))
 
-(define-key vimish-fold-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
-(define-key vimish-fold-keymap (kbd "C-g")       #'vimish-fold-unfold)
-(define-key vimish-fold-keymap (kbd "RET")       #'vimish-fold-unfold)
+(define-key vimish-fold-folded-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
+(define-key vimish-fold-folded-keymap (kbd "C-g")       #'vimish-fold-unfold)
+(define-key vimish-fold-folded-keymap (kbd "RET")       #'vimish-fold-unfold)
 
 ;;;###autoload
 (defun vimish-fold-unfold-all ()
@@ -301,6 +305,8 @@ Elements of LIST should be of the following form:
         (vimish-fold-unfold))
       (when (eq type 'vimish-fold--unfolded)
         (vimish-fold-refold)))))
+
+(define-key vimish-fold-unfolded-keymap (kbd "C-g") #'vimish-fold-refold)
 
 ;;;###autoload
 (defun vimish-fold-avy ()
