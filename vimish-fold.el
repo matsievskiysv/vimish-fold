@@ -54,14 +54,16 @@
 (require 'cl-lib)
 (require 'f)
 
-;; Basic Functionality
-
 (defgroup vimish-fold nil
   "Fold text like in Vim"
   :group  'text
   :tag    "Vimish Fold"
   :prefix "vimish-fold-"
   :link   '(url-link :tag "GitHub" "https://github.com/mrkkrp/vimish-fold"))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Basic functionality
 
 (defface vimish-fold-overlay
   '((t (:inherit highlight)))
@@ -220,6 +222,10 @@ This includes fringe bitmaps and faces."
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
 
+(define-key vimish-fold-folded-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
+(define-key vimish-fold-folded-keymap (kbd "C-g")       #'vimish-fold-unfold)
+(define-key vimish-fold-folded-keymap (kbd "RET")       #'vimish-fold-unfold)
+
 (defun vimish-fold--unfold (overlay)
   "Unfold fold found by its OVERLAY type `vimish-fold--folded'."
   (when (eq (overlay-get overlay 'type) 'vimish-fold--folded)
@@ -232,37 +238,14 @@ This includes fringe bitmaps and faces."
         (overlay-put unfolded 'keymap vimish-fold-unfolded-keymap)
         (vimish-fold--setup-fringe unfolded t)))))
 
+(define-key vimish-fold-unfolded-keymap (kbd "C-g") #'vimish-fold-refold)
+
 ;;;###autoload
 (defun vimish-fold-unfold ()
   "Delete all `vimish-fold--folded' overlays at point."
   (interactive)
   (dolist (overlay (overlays-at (point)))
     (vimish-fold--unfold overlay)))
-
-(define-key vimish-fold-folded-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
-(define-key vimish-fold-folded-keymap (kbd "C-g")       #'vimish-fold-unfold)
-(define-key vimish-fold-folded-keymap (kbd "RET")       #'vimish-fold-unfold)
-
-;;;###autoload
-(defun vimish-fold-unfold-all ()
-  "Unfold all folds in current buffer."
-  (interactive)
-  (dolist (overlay (overlays-in (point-min) (point-max)))
-    (vimish-fold--unfold overlay)))
-
-(defun vimish-fold--restore-from (list)
-  "Restore folds in current buffer form LIST.
-
-Elements of LIST should be of the following form:
-
-  (BEG END &optional UNFOLDED)"
-  (save-excursion
-    (dolist (item list)
-      (cl-destructuring-bind (beg end . rest) item
-        (funcall #'vimish-fold beg end)
-        (when (car rest)
-          (goto-char beg)
-          (vimish-fold-unfold))))))
 
 (defun vimish-fold--refold (overlay)
   "Refold fold found by its OVERLAY type `vimish-fold--unfolded'."
@@ -299,12 +282,33 @@ If OVERLAY does not represent a fold, it's ignored."
   (dolist (overlay (overlays-at (point)))
     (vimish-fold--delete overlay)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Extra features
+
+(defun vimish-fold--folds-in (beg end)
+  "Return all folds exiting between BEG and END in current buffer."
+  (cl-remove-if-not
+   #'vimish-fold--vimish-overlay-p
+   (overlays-in beg end)))
+
+;;;###autoload
+(defun vimish-fold-unfold-all ()
+  "Unfold all folds in current buffer."
+  (interactive)
+  (mapc #'vimish-fold--unfold
+        (vimish-fold--folds-in
+         (point-min)
+         (point-max))))
+
 ;;;###autoload
 (defun vimish-fold-delete-all ()
   "Delete all folds in current buffer."
   (interactive)
-  (dolist (overlay (overlays-in (point-min) (point-max)))
-    (vimish-fold--delete overlay)))
+  (mapc #'vimish-fold--delete
+        (vimish-fold--folds-in
+         (point-min)
+         (point-max))))
 
 ;;;###autoload
 (defun vimish-fold-toggle ()
@@ -316,8 +320,6 @@ If OVERLAY does not represent a fold, it's ignored."
         (vimish-fold-unfold))
       (when (eq type 'vimish-fold--unfolded)
         (vimish-fold-refold)))))
-
-(define-key vimish-fold-unfolded-keymap (kbd "C-g") #'vimish-fold-refold)
 
 ;;;###autoload
 (defun vimish-fold-avy ()
@@ -332,6 +334,40 @@ This feature needs `avy' package."
         (vimish-fold beg end))
     (message "Package ‘avy’ is unavailable")))
 
+;;;###autoload
+(defun vimish-fold-next-fold ()
+  "Jump to next folded region in current buffer."
+  (interactive)
+  (let ((folds-after-point
+         (cl-nset-difference
+          (vimish-fold--folds-in (point) (point-max))
+          (overlays-at (point)))))
+    (when folds-after-point
+      (goto-char
+       (cl-reduce
+        #'min
+        (mapcar
+         #'overlay-start
+         folds-after-point))))))
+
+;;;###autoload
+(defun vimish-fold-previous-fold ()
+  "Jump to previous folded region in current buffer."
+  (interactive)
+  (let ((folds-before-point
+         (cl-nset-difference
+          (vimish-fold--folds-in (point-min) (point))
+          (overlays-at (point)))))
+    (when folds-before-point
+      (goto-char
+       (cl-reduce
+        #'max
+        (mapcar
+         #'overlay-start
+         folds-before-point))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Persistence
 
 (defcustom vimish-fold-dir
@@ -351,6 +387,20 @@ be created automatically."
     "!"
     file)
    vimish-fold-dir))
+
+(defun vimish-fold--restore-from (list)
+  "Restore folds in current buffer form LIST.
+
+Elements of LIST should be of the following form:
+
+  (BEG END &optional UNFOLDED)"
+  (save-excursion
+    (dolist (item list)
+      (cl-destructuring-bind (beg end . rest) item
+        (funcall #'vimish-fold beg end)
+        (when (car rest)
+          (goto-char beg)
+          (vimish-fold-unfold))))))
 
 (defun vimish-fold--save-folds (&optional buffer-or-name)
   "Save folds in BUFFER-OR-NAME, which should have associated file.
