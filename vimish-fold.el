@@ -218,6 +218,7 @@ This includes fringe bitmaps and faces."
     (vimish-fold--read-only t (max 1 (1- beg)) end)
     (let ((overlay (make-overlay beg end nil t nil)))
       (overlay-put overlay 'type 'vimish-fold--folded)
+      (overlay-put overlay 'evaporate t)
       (overlay-put overlay 'keymap vimish-fold-folded-keymap)
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
@@ -235,6 +236,7 @@ This includes fringe bitmaps and faces."
       (delete-overlay overlay)
       (let ((unfolded (make-overlay beg end nil t nil)))
         (overlay-put unfolded 'type 'vimish-fold--unfolded)
+        (overlay-put unfolded 'evaporate t)
         (overlay-put unfolded 'keymap vimish-fold-unfolded-keymap)
         (vimish-fold--setup-fringe unfolded t)))))
 
