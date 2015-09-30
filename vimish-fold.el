@@ -331,8 +331,10 @@ This feature needs `avy' package."
   (interactive)
   (if (require 'avy nil t)
       (let ((beg (point))
-            (end (progn (call-interactively #'avy-goto-line)
-                        (point))))
+            (end (let (avy-all-windows)
+                   (ignore avy-all-windows)
+                   (call-interactively #'avy-goto-line)
+                   (point))))
         (vimish-fold beg end))
     (message "Package ‘avy’ is unavailable")))
 
