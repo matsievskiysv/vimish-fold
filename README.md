@@ -4,24 +4,28 @@
 [![MELPA](http://melpa.org/packages/vimish-fold-badge.svg)](http://melpa.org/#/vimish-fold)
 [![Build Status](https://travis-ci.org/mrkkrp/vimish-fold.svg?branch=master)](https://travis-ci.org/mrkkrp/vimish-fold)
 
-This is package to do text folding like in Vim. It has the following
-features:
+![Vimish Fold](https://raw.githubusercontent.com/mrkkrp/vimish-fold/gh-pages/vimish-fold.png)
 
-* batteries included: activate minor mode, bind a couple of commands and
-  everything will just work;
+This package mostly mimics text folding feature found in Vim. Features of
+the package include:
 
-* it works on regions you select;
+* folding of active regions;
 
-* it's persistent: when you close file your folds don't disappear;
+* good visual feedback: it's obvious which part of text is folded;
 
-* in addition to being persistent, it scales well, you can work on hundreds
-  of files with lots of folds without adverse effects;
+* persistence by default: when you close file your folds don't disappear;
 
-* it's obvious which parts of text are folded;
+* persistence scales well, you can work on hundreds of files with lots of
+  folds without adverse effects;
 
 * it doesn't break indentation or something;
 
-* it can refold unfolded folds (oh, my);
+* folds can be toggled from folded state to unfolded and back very easily;
+
+* quick navigation between existing folds;
+
+* you can use mouse to unfold folds (good for beginners and not only for
+  them);
 
 * for fans of `avy` package: you can use `avy` to fold text with minimal
   number of key strokes!
@@ -41,33 +45,46 @@ vimish-fold RET</kbd>.
 
 ## Usage
 
-Create binding for some of/all these functions:
+First of all, you need to create global key bindings for most important
+functions:
 
-* `vimish-fold` — basic folding of selected region;
+* `vimish-fold` creates folds;
 
-* `vimish-fold-unfold` — you don't really need to bind this, just use
-  <kbd>C-g</kbd> when point is placed on header representing folded text;
+* `vimish-fold-delete` deletes folds.
 
-* `vimish-fold-unfold-all` — nevertheless this may be useful;
+When point is inside of a fold you can toggle it with <kbd>C-g</kbd>, so
+usually you don't need to bind toggling functions.
 
-* `vimish-fold-refold` — you can either bind this command or use
-  <kbd>C-g</kbd> to refold regions;
+Minimal code creating the keybindings looks like this:
 
-* `vimish-fold-delete` — use it to permanently delete fold;
+```emacs-lisp
+(global-set-key (kbd "<menu> v f") #'vimish-fold)
+(global-set-key (kbd "<menu> v v") #'vimish-fold-delete)
+```
 
-* `vimish-fold-toggle` — toggle fold;
+Of course you can choose different key bindings.
 
-* `vimish-fold-avy` — use `avy` to fold your text!
+Other functions that constitute API of the package:
 
-You can turn `vimish-fold-mode` selectively for modes where you want to have
-persistent folding, or simply activate it everywhere:
+* `vimish-fold-unfold`
 
+* `vimish-fold-unfold-all`
+
+* `vimish-fold-refold`
+
+* `vimish-fold-delete-all`
+
+* `vimish-fold-toggle`
+
+* `vimish-fold-avy` (requires `avy` package)
+
+To get persistent folds you need to enable minor mode provided by the
+package. You can turn `vimish-fold-mode` selectively for modes where you
+want to have persistent folding, or simply activate it everywhere:
 
 ```emacs-lisp
 (vimish-fold-global-mode 1)
 ```
-
-It's as simple as that.
 
 ## Customization
 
