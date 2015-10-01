@@ -6,7 +6,7 @@
 ;; Author: Mark Karpov <markkarpov@openmailbox.org>
 ;; Author: Magnar Sveen <magnars@gmail.com>
 ;; URL: https://github.com/mrkkrp/vimish-fold
-;; Version: 0.1.0
+;; Version: 0.2.0
 ;; Package-Requires: ((emacs "24.4") (cl-lib "0.5") (f "0.18.0"))
 ;; Keywords: convenience
 ;;
