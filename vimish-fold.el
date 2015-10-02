@@ -223,6 +223,12 @@ This includes fringe bitmaps and faces."
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
 
+;;;###autoload
+(defun vimish-fold-region ()
+  "Fold active region."
+  (interactive)
+  (vimish-fold (region-beginning) (region-end)))
+
 (define-key vimish-fold-folded-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
 (define-key vimish-fold-folded-keymap (kbd "C-g")       #'vimish-fold-unfold)
 (define-key vimish-fold-folded-keymap (kbd "RET")       #'vimish-fold-unfold)
