@@ -332,6 +332,8 @@ If OVERLAY does not represent a fold, it's ignored."
       (when (eq type 'vimish-fold--unfolded)
         (vimish-fold-refold)))))
 
+(declare-function avy-goto-line "ext:avy")
+
 ;;;###autoload
 (defun vimish-fold-avy ()
   "Fold region of text between point and line selected with avy.
