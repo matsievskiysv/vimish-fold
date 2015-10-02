@@ -332,7 +332,6 @@ This feature needs `avy' package."
   (if (require 'avy nil t)
       (let ((beg (point))
             (end (let (avy-all-windows)
-                   (ignore avy-all-windows)
                    (call-interactively #'avy-goto-line)
                    (point))))
         (vimish-fold beg end))
