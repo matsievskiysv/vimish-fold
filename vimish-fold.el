@@ -304,6 +304,15 @@ If OVERLAY does not represent a fold, it's ignored."
          (point-max))))
 
 ;;;###autoload
+(defun vimish-fold-refold-all ()
+  "Refold all closed folds in current buffer."
+  (interactive)
+  (mapc #'vimish-fold--refold
+        (vimish-fold--folds-in
+         (point-min)
+         (point-max))))
+
+;;;###autoload
 (defun vimish-fold-delete-all ()
   "Delete all folds in current buffer."
   (interactive)

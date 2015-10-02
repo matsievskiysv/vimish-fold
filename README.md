@@ -72,6 +72,8 @@ Other functions that constitute API of the package:
 
 * `vimish-fold-refold`
 
+* `vimish-fold-refold-all`
+
 * `vimish-fold-delete-all`
 
 * `vimish-fold-toggle`
