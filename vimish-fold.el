@@ -223,10 +223,6 @@ This includes fringe bitmaps and faces."
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
 
-(define-key vimish-fold-folded-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
-(define-key vimish-fold-folded-keymap (kbd "C-g")       #'vimish-fold-unfold)
-(define-key vimish-fold-folded-keymap (kbd "RET")       #'vimish-fold-unfold)
-
 (defun vimish-fold--unfold (overlay)
   "Unfold fold found by its OVERLAY type `vimish-fold--folded'."
   (when (eq (overlay-get overlay 'type) 'vimish-fold--folded)
@@ -240,14 +236,30 @@ This includes fringe bitmaps and faces."
         (overlay-put unfolded 'keymap vimish-fold-unfolded-keymap)
         (vimish-fold--setup-fringe unfolded t)))))
 
-(define-key vimish-fold-unfolded-keymap (kbd "C-g") #'vimish-fold-refold)
+(defmacro vimish-fold--with-keyboard-quit (&rest body)
+  "Execute the code in BODY unless there is active region.
+
+When region is active, call `keyboard-quit' interactively
+instead.
+
+This only happens when the BODY is executed interactively and
+should not affect usage in Lisp code."
+  `(if (and (called-interactively-p 'any)
+            (region-active-p))
+       (keyboard-quit)
+     ,@body))
 
 ;;;###autoload
 (defun vimish-fold-unfold ()
   "Delete all `vimish-fold--folded' overlays at point."
   (interactive)
-  (dolist (overlay (overlays-at (point)))
-    (vimish-fold--unfold overlay)))
+  (vimish-fold--with-keyboard-quit
+   (dolist (overlay (overlays-at (point)))
+     (vimish-fold--unfold overlay))))
+
+(define-key vimish-fold-folded-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
+(define-key vimish-fold-folded-keymap (kbd "C-g")       #'vimish-fold-unfold)
+(define-key vimish-fold-folded-keymap (kbd "RET")       #'vimish-fold-unfold)
 
 (defun vimish-fold--refold (overlay)
   "Refold fold found by its OVERLAY type `vimish-fold--unfolded'."
@@ -261,8 +273,11 @@ This includes fringe bitmaps and faces."
 (defun vimish-fold-refold ()
   "Refold unfolded fold at point."
   (interactive)
-  (dolist (overlay (overlays-at (point)))
-    (vimish-fold--refold overlay)))
+  (vimish-fold--with-keyboard-quit
+   (dolist (overlay (overlays-at (point)))
+     (vimish-fold--refold overlay))))
+
+(define-key vimish-fold-unfolded-keymap (kbd "C-g") #'vimish-fold-refold)
 
 (defun vimish-fold--delete (overlay)
   "Internal function used to delete folds represented by OVERLAY.
