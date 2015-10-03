@@ -372,13 +372,14 @@ This feature needs `avy' package."
          (cl-nset-difference
           (vimish-fold--folds-in (point) (point-max))
           (overlays-at (point)))))
-    (when folds-after-point
-      (goto-char
-       (cl-reduce
-        #'min
-        (mapcar
-         #'overlay-start
-         folds-after-point))))))
+    (if folds-after-point
+        (goto-char
+         (cl-reduce
+          #'min
+          (mapcar
+           #'overlay-start
+           folds-after-point)))
+      (message "No more folds after point"))))
 
 ;;;###autoload
 (defun vimish-fold-previous-fold ()
@@ -388,13 +389,14 @@ This feature needs `avy' package."
          (cl-nset-difference
           (vimish-fold--folds-in (point-min) (point))
           (overlays-at (point)))))
-    (when folds-before-point
-      (goto-char
-       (cl-reduce
-        #'max
-        (mapcar
-         #'overlay-start
-         folds-before-point))))))
+    (if folds-before-point
+        (goto-char
+         (cl-reduce
+          #'max
+          (mapcar
+           #'overlay-start
+           folds-before-point)))
+      (message "No more folds before point"))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
