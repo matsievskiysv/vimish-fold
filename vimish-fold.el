@@ -254,8 +254,7 @@ should not affect usage in Lisp code."
   "Delete all `vimish-fold--folded' overlays at point."
   (interactive)
   (vimish-fold--with-keyboard-quit
-   (dolist (overlay (overlays-at (point)))
-     (vimish-fold--unfold overlay))))
+   (mapc #'vimish-fold--unfold (overlays-at (point)))))
 
 (define-key vimish-fold-folded-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
 (define-key vimish-fold-folded-keymap (kbd "C-g")       #'vimish-fold-unfold)
@@ -274,8 +273,7 @@ should not affect usage in Lisp code."
   "Refold unfolded fold at point."
   (interactive)
   (vimish-fold--with-keyboard-quit
-   (dolist (overlay (overlays-at (point)))
-     (vimish-fold--refold overlay))))
+   (mapc #'vimish-fold--refold (overlays-at (point)))))
 
 (define-key vimish-fold-unfolded-keymap (kbd "C-g") #'vimish-fold-refold)
 
@@ -296,8 +294,7 @@ If OVERLAY does not represent a fold, it's ignored."
 (defun vimish-fold-delete ()
   "Delete fold at point."
   (interactive)
-  (dolist (overlay (overlays-at (point)))
-    (vimish-fold--delete overlay)))
+  (mapc #'vimish-fold--delete (overlays-at (point))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -322,10 +319,11 @@ If OVERLAY does not represent a fold, it's ignored."
 (defun vimish-fold-refold-all ()
   "Refold all closed folds in current buffer."
   (interactive)
-  (mapc #'vimish-fold--refold
-        (vimish-fold--folds-in
-         (point-min)
-         (point-max))))
+  (save-excursion ; after folding cursor jumps to beginning of fold
+    (mapc #'vimish-fold--refold
+          (vimish-fold--folds-in
+           (point-min)
+           (point-max)))))
 
 ;;;###autoload
 (defun vimish-fold-delete-all ()
@@ -336,16 +334,30 @@ If OVERLAY does not represent a fold, it's ignored."
          (point-min)
          (point-max))))
 
+(defun vimish-fold--toggle (overlay)
+  "Unfold or refold fold represented by OVERLAY depending on its type."
+  (when (vimish-fold--vimish-overlay-p overlay)
+    (save-excursion
+      (goto-char (overlay-start overlay))
+      (if (eq (overlay-get overlay 'type)
+              'vimish-fold--folded)
+          (vimish-fold-unfold)
+        (vimish-fold-refold)))))
+
 ;;;###autoload
 (defun vimish-fold-toggle ()
   "Toggle fold at point."
   (interactive)
-  (dolist (overlay (overlays-at (point)))
-    (let ((type (overlay-get overlay 'type)))
-      (when (eq type 'vimish-fold--folded)
-        (vimish-fold-unfold))
-      (when (eq type 'vimish-fold--unfolded)
-        (vimish-fold-refold)))))
+  (mapc #'vimish-fold--toggle (overlays-at (point))))
+
+;;;###autoload
+(defun vimish-fold-toggle-all ()
+  "Toggle all folds in current buffer."
+  (interactive)
+  (mapc #'vimish-fold--toggle
+        (vimish-fold--folds-in
+         (point-min)
+         (point-max))))
 
 (declare-function avy-goto-line "ext:avy")
 
