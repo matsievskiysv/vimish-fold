@@ -236,29 +236,14 @@ This includes fringe bitmaps and faces."
         (overlay-put unfolded 'keymap vimish-fold-unfolded-keymap)
         (vimish-fold--setup-fringe unfolded t)))))
 
-(defmacro vimish-fold--with-keyboard-quit (&rest body)
-  "Execute the code in BODY unless there is active region.
-
-When region is active, call `keyboard-quit' interactively
-instead.
-
-This only happens when the BODY is executed interactively and
-should not affect usage in Lisp code."
-  `(if (and (called-interactively-p 'any)
-            (region-active-p))
-       (keyboard-quit)
-     ,@body))
-
 ;;;###autoload
 (defun vimish-fold-unfold ()
   "Delete all `vimish-fold--folded' overlays at point."
   (interactive)
-  (vimish-fold--with-keyboard-quit
-   (mapc #'vimish-fold--unfold (overlays-at (point)))))
+  (mapc #'vimish-fold--unfold (overlays-at (point))))
 
 (define-key vimish-fold-folded-keymap (kbd "<mouse-1>") #'vimish-fold-unfold)
-(define-key vimish-fold-folded-keymap (kbd "C-g")       #'vimish-fold-unfold)
-(define-key vimish-fold-folded-keymap (kbd "RET")       #'vimish-fold-unfold)
+(define-key vimish-fold-folded-keymap (kbd "C-`")       #'vimish-fold-unfold)
 
 (defun vimish-fold--refold (overlay)
   "Refold fold found by its OVERLAY type `vimish-fold--unfolded'."
@@ -272,10 +257,9 @@ should not affect usage in Lisp code."
 (defun vimish-fold-refold ()
   "Refold unfolded fold at point."
   (interactive)
-  (vimish-fold--with-keyboard-quit
-   (mapc #'vimish-fold--refold (overlays-at (point)))))
+  (mapc #'vimish-fold--refold (overlays-at (point))))
 
-(define-key vimish-fold-unfolded-keymap (kbd "C-g") #'vimish-fold-refold)
+(define-key vimish-fold-unfolded-keymap (kbd "C-`") #'vimish-fold-refold)
 
 (defun vimish-fold--delete (overlay)
   "Internal function used to delete folds represented by OVERLAY.

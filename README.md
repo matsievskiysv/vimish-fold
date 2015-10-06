@@ -52,7 +52,7 @@ functions:
 
 * `vimish-fold-delete` deletes folds.
 
-When point is inside of a fold you can toggle it with <kbd>C-g</kbd>, so
+When point is inside of a fold you can toggle it with <kbd>C-`</kbd>, so
 usually you don't need to bind toggling functions.
 
 Minimal code creating the keybindings looks like this:
