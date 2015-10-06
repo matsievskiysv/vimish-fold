@@ -411,9 +411,7 @@ be created automatically."
   "Return path to file where information about folding in FILE is written."
   (f-expand
    (replace-regexp-in-string
-    (regexp-quote (f-path-separator))
-    "!"
-    file)
+    (regexp-opt (list (f-path-separator) ":")) "!" file)
    vimish-fold-dir))
 
 (defun vimish-fold--restore-from (list)
