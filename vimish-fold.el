@@ -446,15 +446,13 @@ BUFFER-OR-NAME defaults to current buffer."
         (let ((fold-file (vimish-fold--make-file-name filename)))
           (if regions
               (with-temp-buffer
-                (insert (format ";;; -*- coding: %s -*-\n"
-                                (symbol-name coding-system-for-write)))
                 (pp regions (current-buffer))
                 (let ((version-control 'never))
                   (condition-case nil
                       (progn
                         (f-mkdir vimish-fold-dir)
                         (write-region (point-min) (point-max) fold-file)
-                        nil)
+                        (message nil))
                     (file-error
                      (message "Vimish Fold: can't write %s" fold-file)))
                   (kill-buffer (current-buffer))))
