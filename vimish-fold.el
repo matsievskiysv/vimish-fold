@@ -469,7 +469,10 @@ BUFFER-OR-NAME defaults to current buffer.
 Return T is some folds have been restored and NIL otherwise."
   (with-current-buffer (or buffer-or-name (current-buffer))
     (let ((filename (buffer-file-name)))
-      (when filename
+      (when (and filename
+                 (null (vimish-fold--folds-in
+                        (point-min)
+                        (point-max))))
         (let ((fold-file (vimish-fold--make-file-name filename)))
           (when (and fold-file (f-readable? fold-file))
             (vimish-fold--restore-from
