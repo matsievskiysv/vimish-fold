@@ -27,24 +27,27 @@
 
 ;;; Commentary:
 
-;; This is package to do text folding like in Vim. It has the following
-;; features:
+;; This is a package to perform text folding like in Vim. It has the
+;; following features:
 ;;
-;; * batteries included: activate minor mode, bind a couple of commands and
-;;   everything will just work;
+;; * folding of active regions;
 ;;
-;; * it works on regions you select;
+;; * good visual feedback: it's obvious which part of text is folded;
 ;;
-;; * it's persistent: when you close file your folds don't disappear;
+;; * persistence by default: when you close file your folds don't disappear;
 ;;
-;; * in addition to being persistent, it scales well, you can work on
-;;   hundreds of files with lots of folds without adverse effects;
-;;
-;; * it's obvious which parts of text are folded;
+;; * persistence scales well, you can work on hundreds of files with lots of
+;;   folds without adverse effects;
 ;;
 ;; * it doesn't break indentation or something;
 ;;
-;; * it can refold just unfolded folds (oh, my);
+;; * folds can be toggled from folded state to unfolded and back very
+;;   easily;
+;;
+;; * quick navigation between existing folds;
+;;
+;; * you can use mouse to unfold folds (good for beginners and not only for
+;;   them);
 ;;
 ;; * for fans of `avy' package: you can use `avy' to fold text with minimal
 ;;   number of key strokes!

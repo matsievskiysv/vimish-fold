@@ -6,8 +6,8 @@
 
 ![Vimish Fold](https://raw.githubusercontent.com/mrkkrp/vimish-fold/gh-pages/vimish-fold.png)
 
-This package mostly mimics text folding feature found in Vim. Features of
-the package include:
+This is a package to perform text folding like in Vim. It has the following
+features:
 
 * folding of active regions;
 
