@@ -114,6 +114,12 @@ This can be a number or NIL.  If it's NIL value returned of
   :tag  "Show number of lines folded"
   :type 'boolean)
 
+(defcustom vimish-fold-include-last-empty-line nil
+  "Whether to include last empty line in selection into created fold."
+  :tag  "Include last empty line into created fold"
+  :type 'boolean
+  :package-version '(vimish-fold . "0.2.1"))
+
 (defvar vimish-fold-folded-keymap (make-sparse-keymap)
   "Keymap which is active when point is placed on folded text.")
 
@@ -136,7 +142,8 @@ really want to include it, we correct this here."
                           (line-beginning-position)))
              (end* (progn (goto-char end)
                           (if (and (zerop (current-column))
-                                   (/= end beg*))
+                                   (/= end beg*)
+                                   (not vimish-fold-include-last-empty-line))
                               (1- end)
                             (line-end-position)))))
         (cons beg* end*)))))
