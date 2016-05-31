@@ -27,7 +27,7 @@
 
 ;;; Commentary:
 
-;; This is a package to perform text folding like in Vim. It has the
+;; This is a package to perform text folding like in Vim.  It has the
 ;; following features:
 ;;
 ;; * folding of active regions;
