@@ -155,7 +155,7 @@ If ON is NIL, make the text editable again."
   (let ((inhibit-read-only t))
     (with-silent-modifications
       (funcall
-       (if on #'set-text-properties #'remove-text-properties)
+       (if on #'add-text-properties #'remove-text-properties)
        beg end (list 'read-only on)))))
 
 (defun vimish-fold--get-header (beg end)
