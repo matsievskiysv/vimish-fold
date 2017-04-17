@@ -355,6 +355,9 @@ If OVERLAY does not represent a fold, it's ignored."
 
 (declare-function avy-goto-line "ext:avy")
 
+(defvar avy-all-windows)
+(declare-function avy-goto-line "ext:avy")
+
 ;;;###autoload
 (defun vimish-fold-avy ()
   "Fold region of text between point and line selected with avy.
@@ -364,7 +367,6 @@ This feature needs `avy' package."
   (if (require 'avy nil t)
       (let ((beg (point))
             (end (let (avy-all-windows)
-                   (ignore avy-all-windows)
                    (call-interactively #'avy-goto-line)
                    (point))))
         (vimish-fold beg end))
