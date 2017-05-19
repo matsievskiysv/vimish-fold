@@ -1,9 +1,9 @@
 ;;; vimish-fold.el --- Fold text like in Vim -*- lexical-binding: t; -*-
 ;;
-;; Copyright © 2015–2017 Mark Karpov <markkarpov@openmailbox.org>
+;; Copyright © 2015–2017 Mark Karpov <markkarpov92@gmail.com>
 ;; Copyright © 2012–2013 Magnar Sveen <magnars@gmail.com>
 ;;
-;; Author: Mark Karpov <markkarpov@openmailbox.org>
+;; Author: Mark Karpov <markkarpov92@gmail.com>
 ;; Author: Magnar Sveen <magnars@gmail.com>
 ;; URL: https://github.com/mrkkrp/vimish-fold
 ;; Version: 0.2.2
