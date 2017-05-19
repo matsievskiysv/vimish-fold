@@ -13,12 +13,12 @@ features:
 
 * good visual feedback: it's obvious which part of text is folded;
 
-* persistence by default: when you close file your folds don't disappear;
+* persistence by default: when you kill a buffer your folds don't disappear;
 
 * persistence scales well, you can work on hundreds of files with lots of
   folds without adverse effects;
 
-* it doesn't break indentation or something;
+* it does not break indentation;
 
 * folds can be toggled from folded state to unfolded and back very easily;
 
@@ -27,7 +27,7 @@ features:
 * you can use mouse to unfold folds (good for beginners and not only for
   them);
 
-* for fans of `avy` package: you can use `avy` to fold text with minimal
+* for fans of the `avy` package: you can use `avy` to fold text with minimal
   number of key strokes!
 
 ## Installation
@@ -45,17 +45,15 @@ vimish-fold RET</kbd>.
 
 ## Usage
 
-First of all, you need to create global key bindings for most important
-functions:
+First of all, create global key bindings for most important functions:
 
 * `vimish-fold` creates folds;
-
 * `vimish-fold-delete` deletes folds.
 
 When point is inside of a fold you can toggle it with <kbd>C-`</kbd>, so
 usually you don't need to bind toggling functions.
 
-Minimal code creating the keybindings looks like this:
+Minimal code creating the keybindings might look like this:
 
 ```emacs-lisp
 (global-set-key (kbd "<menu> v f") #'vimish-fold)
@@ -67,22 +65,15 @@ Of course you can choose different key bindings.
 Other functions that constitute API of the package:
 
 * `vimish-fold-unfold`
-
 * `vimish-fold-unfold-all`
-
 * `vimish-fold-refold`
-
 * `vimish-fold-refold-all`
-
 * `vimish-fold-delete-all`
-
 * `vimish-fold-toggle`
-
 * `vimish-fold-toggle-all`
-
 * `vimish-fold-avy` (requires `avy` package)
 
-To get persistent folds you need to enable minor mode provided by the
+To get persistent folds you need to enable a minor mode provided by the
 package. You can turn `vimish-fold-mode` selectively for modes where you
 want to have persistent folding, or simply activate it everywhere:
 
