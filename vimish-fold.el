@@ -461,7 +461,7 @@ BUFFER-OR-NAME defaults to current buffer."
                 (let ((version-control 'never))
                   (condition-case nil
                       (progn
-                        (f-mkdir vimish-fold-dir)
+                        (apply #'f-mkdir (f-split vimish-fold-dir))
                         (write-region (point-min) (point-max) fold-file)
                         (message nil))
                     (file-error
