@@ -121,6 +121,16 @@ This can be a number or NIL.  If it's NIL value returned of
   :type 'boolean
   :package-version '(vimish-fold . "0.2.1"))
 
+(defcustom vimish-fold-persist-on-saving t
+  "Whether to save folds on buffer saving.
+
+Other than on saving, folds are also saved on buffer killing and
+when user quits Emacs.  Turn this option off if the additional
+overhead is undesirable."
+  :tag "Save folds on buffer saving."
+  :type 'boolean
+  :package-version '(vimish-fold . "0.2.3"))
+
 (defvar vimish-fold-folded-keymap (make-sparse-keymap)
   "Keymap which is active when point is placed on folded text.")
 
@@ -511,7 +521,9 @@ For globalized version of this mode see `vimish-gold-global-mode'."
   (let ((fnc (if vimish-fold-mode #'add-hook #'remove-hook)))
     (funcall fnc 'find-file-hook   #'vimish-fold--restore-folds)
     (funcall fnc 'kill-buffer-hook #'vimish-fold--save-folds)
-    (funcall fnc 'kill-emacs-hook  #'vimish-fold--kill-emacs-hook)))
+    (funcall fnc 'kill-emacs-hook  #'vimish-fold--kill-emacs-hook)
+    (when vimish-fold-persist-on-saving
+      (funcall fnc 'before-save-hook #'vimish-fold--save-folds))))
 
 ;;;###autoload
 (define-globalized-minor-mode vimish-fold-global-mode
