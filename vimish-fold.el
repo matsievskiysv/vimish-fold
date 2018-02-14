@@ -518,6 +518,7 @@ This minor mode sets hooks so when you `find-file' it calls
 
 For globalized version of this mode see `vimish-gold-global-mode'."
   :global nil
+  :keymap (make-sparse-keymap)
   (let ((fnc (if vimish-fold-mode #'add-hook #'remove-hook)))
     (funcall fnc 'find-file-hook   #'vimish-fold--restore-folds)
     (funcall fnc 'kill-buffer-hook #'vimish-fold--save-folds)
