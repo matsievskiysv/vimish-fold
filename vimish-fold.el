@@ -353,7 +353,14 @@ If OVERLAY does not represent a fold, it's ignored."
 (defun vimish-fold-delete ()
   "Delete fold at point."
   (interactive)
-  (mapc #'vimish-fold--delete (overlays-at (point))))
+  (if vimish-fold-allow-nested
+      (let ((overlay (cl-reduce #'vimish-fold--overlay-max-start
+                                (overlays-at (point)))))
+        (mapc #'vimish-fold--delete
+              (vimish-fold--folds-between (overlay-start overlay)
+                                          (overlay-end overlay)))
+        (vimish-fold--delete overlay))
+    (mapc #'vimish-fold--delete (overlays-at (point)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
