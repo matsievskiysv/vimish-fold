@@ -358,6 +358,16 @@ If OVERLAY does not represent a fold, it's ignored."
    (vimish-fold--folds-in beg end)
    (overlays-at beg)))
 
+(defun vimish-fold--folds-beginning-in (beg end)
+  "Return all the folds beginning in BEG and END in current buffer."
+  (let ((list (vimish-fold--folds-in beg end)) tmp-ov)
+    (while (list)
+      (setq tmp-ov (car list))
+      (unless (and (>= beg (overlay-start tmp-ov))
+                   (<= end (overlay-start tmp-ov)))
+        (delq tmp-ov list))
+      (setq list (cdr list)))))
+
 ;;;###autoload
 (defun vimish-fold-unfold-all ()
   "Unfold all folds in current buffer."
@@ -433,9 +443,11 @@ This feature needs `avy' package."
   "Jump to next folded region in current buffer."
   (interactive)
   (let ((folds-after-point
-         (cl-nset-difference
-          (vimish-fold--folds-in (point) (point-max))
-          (overlays-at (point)))))
+         (cl-remove-if-not
+          #'vimish-fold--visible-vimish-overlay-p
+          (cl-nset-difference
+           (vimish-fold--folds-in (point) (point-max))
+           (overlays-at (point))))))
     (if folds-after-point
         (goto-char
          (cl-reduce
@@ -460,6 +472,28 @@ This feature needs `avy' package."
           (mapcar
            #'overlay-start
            folds-before-point)))
+      (message "No more folds before point"))))
+
+;;;###autoload
+(defun vimish-fold-previous-visible-fold ()
+  "Jump to previous folded visible region in current buffer.
+
+The difference with vimish-fold-previous-fold is that here, the previous
+folds can be englobing folds (see `vimish-fold-allow-nested')."
+  (interactive)
+  (let ((folds-before-point
+         (cl-nset-difference
+          (vimish-fold--folds-in (point-min) (point))
+          (vimish-fold--folds-beginning-in (point) (point-max)))))
+    (if folds-before-point
+        (goto-char
+         (cl-reduce
+          #'max
+          (mapcar
+           #'overlay-start
+           (cl-remove-if-not
+            #'vimish-fold--visible-vimish-overlay-p
+            folds-before-point))))
       (message "No more folds before point"))))
 
 
