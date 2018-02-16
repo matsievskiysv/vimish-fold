@@ -81,6 +81,10 @@
   '((t (:inherit font-lock-function-name-face)))
   "Face used to indicate folded text on fringe.")
 
+(defface vimish-fold-nested-fringe
+  '((t (:inherit font-lock-string-face)))
+  "Face used to indicate nested folded text on fringe.")
+
 (defcustom vimish-fold-indication-mode 'left-fringe
   "The indication mode for folded text areas.
 
@@ -214,7 +218,10 @@ If PREFIX is not NIL, setup fringe for every line."
                  (propertize "…" 'display
                              (list vimish-fold-indication-mode
                                    'empty-line
-                                   'vimish-fold-fringe)))))
+                                   (if (vimish-fold--nested-vimish-overlay-p
+                                        overlay)
+                                       'vimish-fold-nested-fringe
+                                     'vimish-fold-fringe))))))
 
 (defun vimish-fold--apply-cosmetic (overlay header)
   "Make OVERLAY look according to user's settings displaying HEADER.
@@ -241,6 +248,12 @@ This includes fringe bitmaps and faces."
   "Detect if given OVERLAY is visible or not."
   (memq (overlay-get overlay 'visibility) '(vimish-fold--visible)))
 
+(defun vimish-fold--nested-vimish-overlay-p (overlay)
+  "Detect if given OVERLAY is nested or not."
+  (if (overlay-get overlay 'nested)
+      t
+    nil))
+
 (defun vimish-fold--overlay-min-start (ov1 ov2)
   "Return the overlay between OV1 and OV2 that has the min `overlay-start'."
   (if (< (overlay-start ov1) (overlay-start ov2))
@@ -254,8 +267,10 @@ This includes fringe bitmaps and faces."
     ov2))
 
 ;;;###autoload
-(defun vimish-fold (beg end)
-  "Fold active region staring at BEG, ending at END."
+(defun vimish-fold (beg end &optional nested)
+  "Fold active region starting at BEG, ending at END.
+
+If NESTED is set to t, put the overlay property nested to the new overlay."
   (interactive "r")
   (deactivate-mark)
   (cl-destructuring-bind (beg . end) (vimish-fold--correct-region beg end)
@@ -267,13 +282,16 @@ This includes fringe bitmaps and faces."
           (goto-char (overlay-start overlay))
           (error "Fold already exists here"))
         (if (> (overlay-start overlay) beg)
-            (overlay-put overlay 'visibility 'vimish-fold--invisible))))
+            (progn
+              (overlay-put overlay 'nested t)
+              (overlay-put overlay 'visibility 'vimish-fold--invisible)))))
     (vimish-fold--read-only t (max 1 (1- beg)) end)
     (let ((overlay (make-overlay beg end nil t nil)))
       (overlay-put overlay 'type 'vimish-fold--folded)
       (overlay-put overlay 'visibility 'vimish-fold--visible)
       (overlay-put overlay 'evaporate t)
       (overlay-put overlay 'keymap vimish-fold-folded-keymap)
+      (if nested (overlay-put overlay 'nested t))
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
 
@@ -281,7 +299,8 @@ This includes fringe bitmaps and faces."
   "Unfold fold found by its OVERLAY type `vimish-fold--folded'."
   (when (eq (overlay-get overlay 'type) 'vimish-fold--folded)
     (let ((beg (overlay-start overlay))
-          (end (overlay-end   overlay)))
+          (end (overlay-end   overlay))
+          (nested (vimish-fold--nested-vimish-overlay-p overlay)))
       (vimish-fold--read-only nil (max 1 (1- beg)) end)
       (delete-overlay overlay)
       (if vimish-fold-allow-nested
@@ -299,6 +318,7 @@ This includes fringe bitmaps and faces."
                 (overlay-put ov 'visibility 'vimish-fold--visible)))))
       (let ((unfolded (make-overlay beg end nil t nil)))
         (overlay-put unfolded 'type 'vimish-fold--unfolded)
+        (if nested (overlay-put unfolded 'nested t))
         (overlay-put unfolded 'visibility 'vimish-fold--visible)
         (overlay-put unfolded 'evaporate t)
         (overlay-put unfolded 'keymap vimish-fold-unfolded-keymap)
@@ -317,9 +337,10 @@ This includes fringe bitmaps and faces."
   "Refold fold found by its OVERLAY type `vimish-fold--unfolded'."
   (when (eq (overlay-get overlay 'type) 'vimish-fold--unfolded)
     (let* ((beg (overlay-start overlay))
-           (end (overlay-end   overlay)))
+           (end (overlay-end   overlay))
+           (nested (vimish-fold--nested-vimish-overlay-p overlay)))
       (delete-overlay overlay)
-      (vimish-fold beg end))))
+      (vimish-fold beg end nested))))
 
 ;;;###autoload
 (defun vimish-fold-refold ()
