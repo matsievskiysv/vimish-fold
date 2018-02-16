@@ -247,6 +247,12 @@ This includes fringe bitmaps and faces."
       t
     nil))
 
+(defun vimish-fold--overlay-max-start (ov1 ov2)
+  "Return the overlay between OV1 and OV2 that has the max `overlay-start'."
+  (if (> (overlay-start ov1) (overlay-start ov2))
+      ov1
+    ov2))
+
 ;;;###autoload
 (defun vimish-fold (beg end)
   "Fold active region staring at BEG, ending at END."
@@ -319,7 +325,14 @@ This includes fringe bitmaps and faces."
 (defun vimish-fold-refold ()
   "Refold unfolded fold at point."
   (interactive)
-  (mapc #'vimish-fold--refold (overlays-at (point))))
+  (if vimish-fold-allow-nested
+      (vimish-fold--refold
+       (cl-reduce
+        #'vimish-fold--overlay-max-start
+        (cl-remove-if
+         #'vimish-fold--folded-vimish-overlay-p
+         (overlays-at (point)))))
+    (mapc #'vimish-fold--refold (overlays-at (point)))))
 
 (define-key vimish-fold-unfolded-keymap (kbd "C-`") #'vimish-fold-refold)
 
