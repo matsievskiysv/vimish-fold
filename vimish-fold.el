@@ -292,6 +292,11 @@ If NESTED is set to t, put the overlay property nested to the new overlay."
       (overlay-put overlay 'evaporate t)
       (overlay-put overlay 'keymap vimish-fold-folded-keymap)
       (if nested (overlay-put overlay 'nested t))
+      (overlay-put overlay 'invisible t)
+      (overlay-put overlay 'isearch-open-invisible
+                   'vimish-fold--isearch-open-invisible)
+      (overlay-put overlay 'isearch-open-invisible-temporary
+                   'vimish-fold--isearch-open-invisible-temporary)
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
 
@@ -408,6 +413,23 @@ If OVERLAY does not represent a fold, it's ignored."
                    (<= end (overlay-start tmp-ov)))
         (delq tmp-ov list))
       (setq list (cdr list)))))
+
+(defun vimish-fold--isearch-open-invisible (overlay)
+  "On isearch entering OVERLAY, permanently open it."
+  (unless (not (vimish-fold--vimish-overlay-p overlay))
+    (mapc #'vimish-fold--unfold
+          (cl-sort (cl-remove-if-not #'vimish-fold--vimish-overlay-p
+                                     (overlays-at (overlay-start overlay)))
+                   'vimish-fold--overlay-min-start))))
+
+;; Currently, this function does not handle refolding due to the way vimish
+;; folds are refolded / unfolded (by deletion / recreation)
+(defun vimish-fold--isearch-open-invisible-temporary (overlay to-invisible)
+  "On isearch entering OVERLAY, open it.
+
+If TO-INVISIBLE value is nil, OVERLAY must be set visible."
+  (unless to-invisible
+    (vimish-fold--isearch-open-invisible overlay)))
 
 ;;;###autoload
 (defun vimish-fold-unfold-all ()
