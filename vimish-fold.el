@@ -81,6 +81,10 @@
   '((t (:inherit font-lock-function-name-face)))
   "Face used to indicate folded text on fringe.")
 
+(defface vimish-fold-nested-fringe
+  '((t (:inherit font-lock-string-face)))
+  "Face used to indicate nested folded text on fringe.")
+
 (defcustom vimish-fold-indication-mode 'left-fringe
   "The indication mode for folded text areas.
 
@@ -130,6 +134,15 @@ overhead is undesirable."
   :tag "Save folds on buffer saving."
   :type 'boolean
   :package-version '(vimish-fold . "0.2.3"))
+
+(defcustom vimish-fold-allow-nested nil
+  "Whether to allow nested folds.
+
+If set to nil, the nested folds (having a fold over a fold) are not allowed
+and will not be created."
+  :tag "Allow nested folds."
+  :type 'boolean
+  :package-version '(vimish-fold . "0.2.4"))
 
 (defvar vimish-fold-folded-keymap (make-sparse-keymap)
   "Keymap which is active when point is placed on folded text.")
@@ -205,7 +218,10 @@ If PREFIX is not NIL, setup fringe for every line."
                  (propertize "…" 'display
                              (list vimish-fold-indication-mode
                                    'empty-line
-                                   'vimish-fold-fringe)))))
+                                   (if (vimish-fold--nested-vimish-overlay-p
+                                        overlay)
+                                       'vimish-fold-nested-fringe
+                                     'vimish-fold-fringe))))))
 
 (defun vimish-fold--apply-cosmetic (overlay header)
   "Make OVERLAY look according to user's settings displaying HEADER.
@@ -224,9 +240,37 @@ This includes fringe bitmaps and faces."
         '(vimish-fold--folded
           vimish-fold--unfolded)))
 
+(defun vimish-fold--folded-vimish-overlay-p (overlay)
+  "Detect if given OVERLAY is created by this package and unfolded."
+  (memq (overlay-get overlay 'type) '(vimish-fold--folded)))
+
+(defun vimish-fold--visible-vimish-overlay-p (overlay)
+  "Detect if given OVERLAY is visible or not."
+  (memq (overlay-get overlay 'visibility) '(vimish-fold--visible)))
+
+(defun vimish-fold--nested-vimish-overlay-p (overlay)
+  "Detect if given OVERLAY is nested or not."
+  (if (overlay-get overlay 'nested)
+      t
+    nil))
+
+(defun vimish-fold--overlay-min-start (ov1 ov2)
+  "Return the overlay between OV1 and OV2 that has the min `overlay-start'."
+  (if (< (overlay-start ov1) (overlay-start ov2))
+      t
+    nil))
+
+(defun vimish-fold--overlay-max-start (ov1 ov2)
+  "Return the overlay between OV1 and OV2 that has the max `overlay-start'."
+  (if (> (overlay-start ov1) (overlay-start ov2))
+      ov1
+    ov2))
+
 ;;;###autoload
-(defun vimish-fold (beg end)
-  "Fold active region staring at BEG, ending at END."
+(defun vimish-fold (beg end &optional nested)
+  "Fold active region starting at BEG, ending at END.
+
+If NESTED is set to t, put the overlay property nested to the new overlay."
   (interactive "r")
   (deactivate-mark)
   (cl-destructuring-bind (beg . end) (vimish-fold--correct-region beg end)
@@ -234,13 +278,25 @@ This includes fringe bitmaps and faces."
       (error "Nothing to fold"))
     (dolist (overlay (overlays-in beg end))
       (when (vimish-fold--vimish-overlay-p overlay)
-        (goto-char (overlay-start overlay))
-        (error "Fold already exists here")))
+        (unless vimish-fold-allow-nested
+          (goto-char (overlay-start overlay))
+          (error "Fold already exists here"))
+        (if (> (overlay-start overlay) beg)
+            (progn
+              (overlay-put overlay 'nested t)
+              (overlay-put overlay 'visibility 'vimish-fold--invisible)))))
     (vimish-fold--read-only t (max 1 (1- beg)) end)
     (let ((overlay (make-overlay beg end nil t nil)))
       (overlay-put overlay 'type 'vimish-fold--folded)
+      (overlay-put overlay 'visibility 'vimish-fold--visible)
       (overlay-put overlay 'evaporate t)
       (overlay-put overlay 'keymap vimish-fold-folded-keymap)
+      (if nested (overlay-put overlay 'nested t))
+      (overlay-put overlay 'invisible t)
+      (overlay-put overlay 'isearch-open-invisible
+                   'vimish-fold--isearch-open-invisible)
+      (overlay-put overlay 'isearch-open-invisible-temporary
+                   'vimish-fold--isearch-open-invisible-temporary)
       (vimish-fold--apply-cosmetic overlay (vimish-fold--get-header beg end)))
     (goto-char beg)))
 
@@ -248,11 +304,27 @@ This includes fringe bitmaps and faces."
   "Unfold fold found by its OVERLAY type `vimish-fold--folded'."
   (when (eq (overlay-get overlay 'type) 'vimish-fold--folded)
     (let ((beg (overlay-start overlay))
-          (end (overlay-end   overlay)))
+          (end (overlay-end   overlay))
+          (nested (vimish-fold--nested-vimish-overlay-p overlay)))
       (vimish-fold--read-only nil (max 1 (1- beg)) end)
       (delete-overlay overlay)
+      (if vimish-fold-allow-nested
+          ;; Update all visible folds
+          (let ((list (cl-sort (cl-remove-if
+                                #'vimish-fold--visible-vimish-overlay-p
+                                (vimish-fold--folds-between beg end))
+                               'vimish-fold--overlay-min-start))
+                (last-end 0))
+            (dolist (ov list)
+              (unless (< (overlay-end ov) last-end)
+                (if (vimish-fold--folded-vimish-overlay-p ov)
+                    (setq last-end (overlay-end ov))
+                  (setq last-end 0))
+                (overlay-put ov 'visibility 'vimish-fold--visible)))))
       (let ((unfolded (make-overlay beg end nil t nil)))
         (overlay-put unfolded 'type 'vimish-fold--unfolded)
+        (if nested (overlay-put unfolded 'nested t))
+        (overlay-put unfolded 'visibility 'vimish-fold--visible)
         (overlay-put unfolded 'evaporate t)
         (overlay-put unfolded 'keymap vimish-fold-unfolded-keymap)
         (vimish-fold--setup-fringe unfolded t)))))
@@ -270,15 +342,23 @@ This includes fringe bitmaps and faces."
   "Refold fold found by its OVERLAY type `vimish-fold--unfolded'."
   (when (eq (overlay-get overlay 'type) 'vimish-fold--unfolded)
     (let* ((beg (overlay-start overlay))
-           (end (overlay-end   overlay)))
+           (end (overlay-end   overlay))
+           (nested (vimish-fold--nested-vimish-overlay-p overlay)))
       (delete-overlay overlay)
-      (vimish-fold beg end))))
+      (vimish-fold beg end nested))))
 
 ;;;###autoload
 (defun vimish-fold-refold ()
   "Refold unfolded fold at point."
   (interactive)
-  (mapc #'vimish-fold--refold (overlays-at (point))))
+  (if vimish-fold-allow-nested
+      (vimish-fold--refold
+       (cl-reduce
+        #'vimish-fold--overlay-max-start
+        (cl-remove-if
+         #'vimish-fold--folded-vimish-overlay-p
+         (overlays-at (point)))))
+    (mapc #'vimish-fold--refold (overlays-at (point)))))
 
 (define-key vimish-fold-unfolded-keymap (kbd "C-`") #'vimish-fold-refold)
 
@@ -299,7 +379,14 @@ If OVERLAY does not represent a fold, it's ignored."
 (defun vimish-fold-delete ()
   "Delete fold at point."
   (interactive)
-  (mapc #'vimish-fold--delete (overlays-at (point))))
+  (if vimish-fold-allow-nested
+      (let ((overlay (cl-reduce #'vimish-fold--overlay-max-start
+                                (overlays-at (point)))))
+        (mapc #'vimish-fold--delete
+              (vimish-fold--folds-between (overlay-start overlay)
+                                          (overlay-end overlay)))
+        (vimish-fold--delete overlay))
+    (mapc #'vimish-fold--delete (overlays-at (point)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -310,6 +397,39 @@ If OVERLAY does not represent a fold, it's ignored."
   (cl-remove-if-not
    #'vimish-fold--vimish-overlay-p
    (overlays-in beg end)))
+
+(defun vimish-fold--folds-between (beg end)
+  "Return all folds between BEG and END in current buffer."
+  (cl-nset-difference
+   (vimish-fold--folds-in beg end)
+   (overlays-at beg)))
+
+(defun vimish-fold--folds-beginning-in (beg end)
+  "Return all the folds beginning in BEG and END in current buffer."
+  (let ((list (vimish-fold--folds-in beg end)) tmp-ov)
+    (while (list)
+      (setq tmp-ov (car list))
+      (unless (and (>= beg (overlay-start tmp-ov))
+                   (<= end (overlay-start tmp-ov)))
+        (delq tmp-ov list))
+      (setq list (cdr list)))))
+
+(defun vimish-fold--isearch-open-invisible (overlay)
+  "On isearch entering OVERLAY, permanently open it."
+  (unless (not (vimish-fold--vimish-overlay-p overlay))
+    (mapc #'vimish-fold--unfold
+          (cl-sort (cl-remove-if-not #'vimish-fold--vimish-overlay-p
+                                     (overlays-at (overlay-start overlay)))
+                   'vimish-fold--overlay-min-start))))
+
+;; Currently, this function does not handle refolding due to the way vimish
+;; folds are refolded / unfolded (by deletion / recreation)
+(defun vimish-fold--isearch-open-invisible-temporary (overlay to-invisible)
+  "On isearch entering OVERLAY, open it.
+
+If TO-INVISIBLE value is nil, OVERLAY must be set visible."
+  (unless to-invisible
+    (vimish-fold--isearch-open-invisible overlay)))
 
 ;;;###autoload
 (defun vimish-fold-unfold-all ()
@@ -386,9 +506,11 @@ This feature needs `avy' package."
   "Jump to next folded region in current buffer."
   (interactive)
   (let ((folds-after-point
-         (cl-nset-difference
-          (vimish-fold--folds-in (point) (point-max))
-          (overlays-at (point)))))
+         (cl-remove-if-not
+          #'vimish-fold--visible-vimish-overlay-p
+          (cl-nset-difference
+           (vimish-fold--folds-in (point) (point-max))
+           (overlays-at (point))))))
     (if folds-after-point
         (goto-char
          (cl-reduce
@@ -413,6 +535,28 @@ This feature needs `avy' package."
           (mapcar
            #'overlay-start
            folds-before-point)))
+      (message "No more folds before point"))))
+
+;;;###autoload
+(defun vimish-fold-previous-visible-fold ()
+  "Jump to previous folded visible region in current buffer.
+
+The difference with vimish-fold-previous-fold is that here, the previous
+folds can be englobing folds (see `vimish-fold-allow-nested')."
+  (interactive)
+  (let ((folds-before-point
+         (cl-nset-difference
+          (vimish-fold--folds-in (point-min) (point))
+          (vimish-fold--folds-beginning-in (point) (point-max)))))
+    (if folds-before-point
+        (goto-char
+         (cl-reduce
+          #'max
+          (mapcar
+           #'overlay-start
+           (cl-remove-if-not
+            #'vimish-fold--visible-vimish-overlay-p
+            folds-before-point))))
       (message "No more folds before point"))))
 
 
@@ -518,6 +662,7 @@ This minor mode sets hooks so when you `find-file' it calls
 
 For globalized version of this mode see `vimish-gold-global-mode'."
   :global nil
+  :keymap (make-sparse-keymap)
   (let ((fnc (if vimish-fold-mode #'add-hook #'remove-hook)))
     (funcall fnc 'find-file-hook   #'vimish-fold--restore-folds)
     (funcall fnc 'kill-buffer-hook #'vimish-fold--save-folds)
