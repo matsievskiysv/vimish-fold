@@ -3,6 +3,7 @@
 [![License GPL 3](https://img.shields.io/badge/license-GPL_3-green.svg)](http://www.gnu.org/licenses/gpl-3.0.txt)
 [![MELPA](https://melpa.org/packages/vimish-fold-badge.svg)](https://melpa.org/#/vimish-fold)
 [![Build Status](https://travis-ci.org/mrkkrp/vimish-fold.svg?branch=master)](https://travis-ci.org/mrkkrp/vimish-fold)
+[![Coverage Status](https://coveralls.io/repos/mrkkrp/vimish-fold/badge.svg?branch=master&service=github)](https://coveralls.io/github/mrkkrp/vimish-fold?branch=master)
 
 ![Vimish Fold](https://raw.githubusercontent.com/mrkkrp/vimish-fold/gh-pages/vimish-fold.png)
 
