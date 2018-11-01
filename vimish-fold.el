@@ -516,7 +516,7 @@ This minor mode sets hooks so when you `find-file' it calls
 `vimish-fold--restore-folds' and when you kill a file it calls
 `vimish-fold--save-folds'.
 
-For globalized version of this mode see `vimish-gold-global-mode'."
+For globalized version of this mode see `vimish-fold-global-mode'."
   :global nil
   (let ((fnc (if vimish-fold-mode #'add-hook #'remove-hook)))
     (funcall fnc 'find-file-hook   #'vimish-fold--restore-folds)
