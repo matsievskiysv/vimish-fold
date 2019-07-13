@@ -1,6 +1,6 @@
 ;;; vimish-fold-test.el --- Tests for Vimish Fold -*- lexical-binding: t; -*-
 ;;
-;; Copyright © 2018 Mark Karpov <markkarpov92@gmail.com>
+;; Copyright © 2018–present Mark Karpov <markkarpov92@gmail.com>
 ;;
 ;; Author: Mark Karpov <markkarpov92@gmail.com>
 ;; URL: https://github.com/
