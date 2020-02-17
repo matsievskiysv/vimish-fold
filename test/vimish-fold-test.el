@@ -27,10 +27,6 @@
 
 ;;; Code:
 
-(require 'undercover)
-
-(undercover "vimish-fold.el")
-
 (require 'cl-lib)
 (require 'vimish-fold)
 
