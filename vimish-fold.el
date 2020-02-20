@@ -523,7 +523,10 @@ For globalized version of this mode see `vimish-fold-global-mode'."
     (funcall fnc 'kill-buffer-hook #'vimish-fold--save-folds)
     (funcall fnc 'kill-emacs-hook  #'vimish-fold--kill-emacs-hook)
     (when vimish-fold-persist-on-saving
-      (funcall fnc 'before-save-hook #'vimish-fold--save-folds))))
+      (funcall fnc 'before-save-hook #'vimish-fold--save-folds))
+    (if vimish-fold-mode
+        (vimish-fold--restore-folds)
+      (vimish-fold-delete-all))))
 
 ;;;###autoload
 (define-globalized-minor-mode vimish-fold-global-mode
