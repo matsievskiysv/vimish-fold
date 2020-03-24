@@ -13,6 +13,9 @@ features:
 
 * good visual feedback: it's obvious which part of text is folded;
 
+* create folds from regions between `{{{` `}}}` automatically (marks are
+  customizable);
+
 * persistence by default: when you kill a buffer your folds don't disappear;
 
 * persistence scales well, you can work on hundreds of files with lots of
@@ -72,6 +75,7 @@ Other functions that constitute API of the package:
 * `vimish-fold-toggle`
 * `vimish-fold-toggle-all`
 * `vimish-fold-avy` (requires `avy` package)
+* `vimish-fold-from-marks`
 
 To get persistent folds you need to enable a minor mode provided by the
 package. You can turn `vimish-fold-mode` selectively for modes where you

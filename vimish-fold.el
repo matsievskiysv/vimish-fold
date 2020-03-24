@@ -417,6 +417,70 @@ This feature needs `avy' package."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Folding marks
+
+(defcustom vimish-fold-marks '("{{{" . "}}}")
+  "Strings marking beginning and end of folding region.
+
+Automatically create folds from regions marked by `vimish-fold-marks' strings."
+  :tag "Fold marks."
+  :type '(cons :tag "Configure marks" string string)
+  :package-version '(vimish-fold . "0.3.0"))
+
+(defcustom vimish-fold-find-marks-on-open t
+  "Whether to search for marks when opening buffer."
+  :tag "Search for marks on open."
+  :type 'boolean
+  :package-version '(vimish-fold . "0.3.0"))
+
+(defun vimish-fold--find-marks-in-region (beg end)
+  "Find folding symbols in region between BEG and END.
+
+Returns list of regions between marks in form
+  (BEG END UNFOLDED)."
+  (save-excursion
+    (save-restriction
+      (narrow-to-region beg end)
+      (goto-char (point-min))
+      (let (start end)
+        (cl-loop
+         do
+         (setq start (search-forward (car vimish-fold-marks) nil t)
+               end (search-forward (cdr vimish-fold-marks) nil t))
+         while (and start end)
+         unless (= (line-number-at-pos start)
+                   (line-number-at-pos end))
+         collect (list start end 'UNFOLDED))))))
+
+(defun vimish-fold--find-gaps ()
+  "Find gaps between folds."
+  (let ((overlays (vimish-fold--folds-in (point-min) (point-max)))
+        positions)
+    (setq positions
+          (append (list (point-min))
+                  (cl-mapcan #'list
+                             (cl-sort (cl-mapcar 'overlay-start overlays) '<)
+                             (cl-sort (cl-mapcar 'overlay-end overlays) '<))
+                  (list (point-max))))
+    (cl-remove-if
+     (lambda (x) (let ((beg (line-number-at-pos (car x)))
+                  (end (line-number-at-pos (cadr x))))
+              (> 2 (- end beg))))
+     (cl-loop while positions
+              collect (list (pop positions) (pop positions))))))
+
+;;;###autoload
+(defun vimish-fold-from-marks ()
+  "Create folds from folding symbols.
+
+Mark strings are controlled by `vimish-fold-marks' customize variable."
+  (interactive)
+  (vimish-fold--restore-from
+   (cl-mapcan (lambda (x) (apply 'vimish-fold--find-marks-in-region x))
+              (vimish-fold--find-gaps))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Persistence
 
 (defcustom vimish-fold-dir
@@ -520,6 +584,8 @@ For globalized version of this mode see `vimish-fold-global-mode'."
   :global nil
   (let ((fnc (if vimish-fold-mode #'add-hook #'remove-hook)))
     (funcall fnc 'find-file-hook   #'vimish-fold--restore-folds)
+    (when vimish-fold-find-marks-on-open
+      (funcall fnc 'find-file-hook #'vimish-fold-from-marks))
     (funcall fnc 'kill-buffer-hook #'vimish-fold--save-folds)
     (funcall fnc 'kill-emacs-hook  #'vimish-fold--kill-emacs-hook)
     (when vimish-fold-persist-on-saving
