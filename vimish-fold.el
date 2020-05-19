@@ -563,6 +563,12 @@ Return T is some folds have been restored and NIL otherwise."
                (insert-file-contents fold-file)
                (read (buffer-string))))))))))
 
+(defun vimish-fold--find-file-hook ()
+  "Restore previous folds and maybe look for new ones."
+  (vimish-fold--restore-folds)
+  (when vimish-fold-find-marks-on-open
+    (vimish-fold-from-marks)))
+
 (defun vimish-fold--kill-emacs-hook ()
   "Traverse all buffers and try to save their folds."
   (mapc #'vimish-fold--save-folds (buffer-list)))
@@ -583,9 +589,7 @@ This minor mode sets hooks so when you `find-file' it calls
 For globalized version of this mode see `vimish-fold-global-mode'."
   :global nil
   (let ((fnc (if vimish-fold-mode #'add-hook #'remove-hook)))
-    (funcall fnc 'find-file-hook   #'vimish-fold--restore-folds)
-    (when vimish-fold-find-marks-on-open
-      (funcall fnc 'find-file-hook #'vimish-fold-from-marks))
+    (funcall fnc 'find-file-hook   #'vimish-fold--find-file-hook)
     (funcall fnc 'kill-buffer-hook #'vimish-fold--save-folds)
     (funcall fnc 'kill-emacs-hook  #'vimish-fold--kill-emacs-hook)
     (when vimish-fold-persist-on-saving
