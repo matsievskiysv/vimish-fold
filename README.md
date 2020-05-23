@@ -2,9 +2,9 @@
 
 [![License GPL 3](https://img.shields.io/badge/license-GPL_3-green.svg)](http://www.gnu.org/licenses/gpl-3.0.txt)
 [![MELPA](https://melpa.org/packages/vimish-fold-badge.svg)](https://melpa.org/#/vimish-fold)
-[![CircleCI](https://circleci.com/gh/mrkkrp/vimish-fold/tree/master.svg?style=svg)](https://circleci.com/gh/mrkkrp/vimish-fold/tree/master)
+[![CircleCI](https://circleci.com/gh/seregaxvm/vimish-fold/tree/master.svg?style=svg)](https://circleci.com/gh/seregaxvm/vimish-fold/tree/master)
 
-![Vimish Fold](https://raw.githubusercontent.com/mrkkrp/vimish-fold/gh-pages/vimish-fold.png)
+![Vimish Fold](https://raw.githubusercontent.com/seregaxvm/vimish-fold/gh-pages/vimish-fold.png)
 
 This is a package to perform text folding like in Vim. It has the following
 features:
