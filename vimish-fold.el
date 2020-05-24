@@ -149,15 +149,29 @@ really want to include it, we correct this here."
           (cons beg end)
         (cons end beg))
     (save-excursion
-      (let* ((beg* (progn (goto-char beg)
-                          (line-beginning-position)))
-             (end* (progn (goto-char end)
-                          (if (and (zerop (current-column))
-                                   (/= end beg*)
-                                   (not vimish-fold-include-last-empty-line))
-                              (1- end)
-                            (line-end-position)))))
-        (cons beg* end*)))))
+      (save-restriction
+        (let ((beg* (progn (goto-char beg)
+                           (line-beginning-position)))
+              (end* (progn (goto-char end)
+                           (line-end-position))))
+          (when (or vimish-fold-include-last-empty-line
+                    (not (eq beg* end*)))
+            (narrow-to-region beg* end*)
+            (goto-char (point-min))
+            (let* ((empty-lines (reverse (cl-loop if (progn (goto-char (line-beginning-position)) (looking-at "$"))
+                                                  collect (line-number-at-pos)
+                                                  end
+                                                  until (progn (goto-char (line-end-position)) (eobp))
+                                                  do (forward-line 1))))
+                   (empty-lines-num (length empty-lines)))
+              (cl-case empty-lines-num
+                (0)
+                (1 (when (eq (line-number-at-pos (point-max)) (car empty-lines))
+                     (setq end* (1- end*))))
+                (t (when (and (eq (line-number-at-pos (point-max)) (car empty-lines))
+                              (> (- (car empty-lines) (cadr empty-lines)) 1))
+                     (setq end* (1- end*)))))))
+          (cons beg* end*))))))
 
 (defun vimish-fold--read-only (on beg end)
   "If ON is non-NIL, make text between BEG and END read-only.

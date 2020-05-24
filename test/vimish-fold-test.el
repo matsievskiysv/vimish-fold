@@ -37,6 +37,29 @@
      (insert-file-contents ,file)
      ,@body))
 
+(defun compare-regions (region1 region2)
+  "Helper function to compare REGION1 to REGION2."
+  (cl-destructuring-bind (beg1 . end1) region1
+    (cl-destructuring-bind (beg2 . end2) region2
+      (and (= beg1 beg2) (= end1 end2)))))
+
+(ert-deftest vimish-fold-vimish-fold/test-correct-region ()
+  "Test `vimish-fold--correct-region' function."
+  (with-test-file "test/fold.txt"
+   (should (compare-regions (vimish-fold--correct-region 1 1) '(1 . 76)))
+   (should (compare-regions (vimish-fold--correct-region 10 80) '(1 . 152)))
+   (should (compare-regions (vimish-fold--correct-region 550 600) '(528 . 633)))
+   (should (compare-regions (vimish-fold--correct-region 550 634) '(528 . 633)))
+   (should (compare-regions (vimish-fold--correct-region 633 633) '(599 . 633)))
+   (should (compare-regions (vimish-fold--correct-region 634 634) '(634 . 634)))
+   (should (compare-regions (vimish-fold--correct-region 1324 2432) '(1324 . 2431))))
+  (with-test-file
+   "test/marks.py"
+   (should (compare-regions (vimish-fold--correct-region 1 1) '(1 . 22)))
+   (should (compare-regions (vimish-fold--correct-region 10 38) '(1 . 37)))
+   (should (compare-regions (vimish-fold--correct-region 116 132) '(116 . 131)))
+   (should (compare-regions (vimish-fold--correct-region 116 133) '(116 . 133)))))
+
 (ert-deftest vimish-fold-vimish-fold/test-fold ()
   "Test `vimish-fold' function."
   (with-test-file "test/fold.txt"
@@ -67,9 +90,6 @@
     (should (equal (cl-sort (cl-mapcar 'overlay-end (vimish-fold--folds-in (point-min) (point-max))) '<) '(267)))
     (should (cl-reduce '(lambda (x o) (and (eq (overlay-get o 'type) 'vimish-fold--unfolded) x)) (vimish-fold--folds-in (point-min) (point-max)) :initial-value t))
     (vimish-fold-refold-all)
-    (should (cl-reduce '(lambda (x o) (and (eq (overlay-get o 'type) 'vimish-fold--folded) x)) (vimish-fold--folds-in (point-min) (point-max)) :initial-value t))
-    ))
-
-(provide 'vimish-fold-test)
+    (should (cl-reduce '(lambda (x o) (and (eq (overlay-get o 'type) 'vimish-fold--folded) x)) (vimish-fold--folds-in (point-min) (point-max)) :initial-value t))))
 
 ;;; vimish-fold-test.el ends here
