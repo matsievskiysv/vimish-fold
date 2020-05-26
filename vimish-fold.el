@@ -179,9 +179,9 @@ really want to include it, we correct this here."
 If ON is NIL, make the text editable again."
   (let ((inhibit-read-only t))
     (with-silent-modifications
-      (funcall
-       (if on #'add-text-properties #'remove-text-properties)
-       beg end (list 'read-only on)))))
+      (if on
+          (add-text-properties beg end (list 'read-only on))
+        (remove-text-properties beg end (list 'read-only on))))))
 
 (defun vimish-fold--get-header (beg end)
   "Extract folding header from region between BEG and END in BUFFER.
@@ -531,7 +531,7 @@ Elements of LIST should be of the following form:
     (ignore-errors
      (dolist (item list)
       (cl-destructuring-bind (beg end . rest) item
-        (funcall #'vimish-fold beg end)
+        (vimish-fold beg end)
         (when (car rest)
           (goto-char beg)
           (vimish-fold-unfold)))))))
