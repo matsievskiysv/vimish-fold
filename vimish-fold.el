@@ -390,9 +390,16 @@ If OVERLAY does not represent a fold, it's ignored."
   "Unfold all folds in current buffer."
   (interactive)
   (mapc #'vimish-fold--unfold
-        (vimish-fold--folds-in
-         (point-min)
-         (point-max))))
+        (vimish-fold--folds-in (point-min) (point-max))))
+
+;;;###autoload
+(defun vimish-fold-unfold-all-others ()
+  "Unfold all but current folds in current buffer."
+  (interactive)
+  (mapc #'vimish-fold--unfold
+        (cl-nset-difference
+         (vimish-fold--folds-in (point-min) (point-max))
+         (overlays-at (point)))))
 
 ;;;###autoload
 (defun vimish-fold-refold-all ()
@@ -400,18 +407,33 @@ If OVERLAY does not represent a fold, it's ignored."
   (interactive)
   (save-excursion ; after folding cursor jumps to beginning of fold
     (mapc #'vimish-fold--refold
-          (vimish-fold--folds-in
-           (point-min)
-           (point-max)))))
+          (vimish-fold--folds-in (point-min) (point-max)))))
+
+;;;###autoload
+(defun vimish-fold-refold-all-others ()
+  "Refold all closed folds but current in current buffer."
+  (interactive)
+  (save-excursion ; after folding cursor jumps to beginning of fold
+    (mapc #'vimish-fold--refold
+          (cl-nset-difference
+           (vimish-fold--folds-in (point-min) (point-max))
+           (overlays-at (point))))))
 
 ;;;###autoload
 (defun vimish-fold-delete-all ()
   "Delete all folds in current buffer."
   (interactive)
   (mapc #'vimish-fold--delete
-        (vimish-fold--folds-in
-         (point-min)
-         (point-max))))
+        (vimish-fold--folds-in (point-min) (point-max))))
+
+;;;###autoload
+(defun vimish-fold-delete-all-others ()
+  "Delete all folds but current in current buffer."
+  (interactive)
+  (mapc #'vimish-fold--delete
+        (cl-nset-difference
+         (vimish-fold--folds-in (point-min) (point-max))
+         (overlays-at (point)))))
 
 (defun vimish-fold--toggle (overlay)
   "Unfold or refold fold represented by OVERLAY depending on its type."
@@ -436,6 +458,15 @@ If OVERLAY does not represent a fold, it's ignored."
         (vimish-fold--folds-in
          (point-min)
          (point-max))))
+
+;;;###autoload
+(defun vimish-fold-toggle-all-others ()
+  "Toggle all folds but current in current buffer."
+  (interactive)
+  (mapc #'vimish-fold--toggle
+        (cl-nset-difference
+         (vimish-fold--folds-in (point-min) (point-max))
+         (overlays-at (point)))))
 
 (declare-function avy-goto-line "ext:avy")
 

@@ -69,11 +69,15 @@ Other functions that constitute API of the package:
 
 * `vimish-fold-unfold`
 * `vimish-fold-unfold-all`
+* `vimish-fold-unfold-all-others`
 * `vimish-fold-refold`
 * `vimish-fold-refold-all`
+* `vimish-fold-refold-all-others`
 * `vimish-fold-delete-all`
+* `vimish-fold-delete-all-others`
 * `vimish-fold-toggle`
 * `vimish-fold-toggle-all`
+* `vimish-fold-toggle-all-others`
 * `vimish-fold-avy` (requires `avy` package)
 * `vimish-fold-from-marks`
 * `vimish-fold-narrow-to-fold`
