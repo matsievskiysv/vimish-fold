@@ -76,6 +76,7 @@ Other functions that constitute API of the package:
 * `vimish-fold-toggle-all`
 * `vimish-fold-avy` (requires `avy` package)
 * `vimish-fold-from-marks`
+* `vimish-fold-narrow-to-fold`
 
 To get persistent folds you need to enable a minor mode provided by the
 package. You can turn `vimish-fold-mode` selectively for modes where you
