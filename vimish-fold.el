@@ -331,7 +331,8 @@ This includes fringe bitmaps and faces."
         (overlay-put unfolded 'type 'vimish-fold--unfolded)
         (overlay-put unfolded 'evaporate t)
         (overlay-put unfolded 'keymap vimish-fold-unfolded-keymap)
-        (vimish-fold--setup-fringe unfolded t)))))
+        (vimish-fold--setup-fringe unfolded t)
+        unfolded))))
 
 ;;;###autoload
 (defun vimish-fold-unfold ()
@@ -345,6 +346,8 @@ This includes fringe bitmaps and faces."
 (defun vimish-fold--refold (overlay)
   "Refold fold found by its OVERLAY type `vimish-fold--unfolded'."
   (when (vimish-fold--vimish-overlay-unfolded-p overlay)
+    (when (buffer-narrowed-p)
+      (error "Cannot operate on narrowed buffers"))
     (let ((beg (overlay-start overlay))
           (end (overlay-end   overlay)))
       (delete-overlay overlay)
@@ -484,6 +487,24 @@ This feature needs `avy' package."
            #'overlay-start
            folds-before-point)))
       (message "No more folds before point"))))
+
+;;;###autoload
+(defun vimish-fold-narrow-to-fold ()
+  "Narrow to fold at current position."
+  (interactive)
+  (cl-loop for overlay in (overlays-at (point))
+           if (vimish-fold--vimish-overlay-p overlay)
+           do
+           (when (vimish-fold--vimish-overlay-folded-p overlay)
+             (setq overlay (vimish-fold--unfold overlay)))
+           (narrow-to-region (overlay-start overlay)
+                             (overlay-end overlay))
+           end
+           until (vimish-fold--vimish-overlay-p overlay)))
+
+(define-key vimish-fold-folded-keymap (kbd "C-x n f") #'vimish-fold-narrow-to-fold)
+(define-key vimish-fold-unfolded-keymap (kbd "C-x n f") #'vimish-fold-narrow-to-fold)
+
 
 ;; >>>
 
