@@ -1,13 +1,15 @@
 ;;; vimish-fold.el --- Fold text like in Vim -*- lexical-binding: t; -*-
 ;;
-;; Copyright © 2015–present Mark Karpov <markkarpov92@gmail.com>
+;; Copyright © 2020–present Sergey Matsievskiy <matsievskiysv@gmail.com>
+;; Copyright © 2015–2020 Mark Karpov <markkarpov92@gmail.com>
 ;; Copyright © 2012–2013 Magnar Sveen <magnars@gmail.com>
 ;;
+;; Author: Sergey Matsievskiy <matsievskiysv@gmail.com>
 ;; Author: Mark Karpov <markkarpov92@gmail.com>
 ;; Author: Magnar Sveen <magnars@gmail.com>
 ;; URL: https://github.com/mrkkrp/vimish-fold
-;; Version: 0.3.0
-;; Package-Requires: ((emacs "24.4") (cl-lib "0.5") (f "0.18.0"))
+;; Version: 0.4.0
+;; Package-Requires: ((emacs "26.1") (cl-lib "0.5") (f "0.18.0"))
 ;; Keywords: convenience
 ;;
 ;; This file is not part of GNU Emacs.
@@ -101,14 +103,15 @@ If set to NIL, do not indicate folded text, just highlight it."
   :tag  "Header of Blank Fold"
   :type 'string)
 
-(defcustom vimish-fold-header-width 80
+(defcustom vimish-fold-header-width nil
   "Width of header of folded region.
 
 This can be a number or NIL.  If it's NIL value returned of
 `window-width' will be used."
   :tag  "Width of header of folded region"
   :type '(choice (const   :tag "use window width")
-                 (integer :tag "width of fold header")))
+                 (integer :tag "width of fold header"))
+  :package-version '(vimish-fold . "0.4.0"))
 
 (defcustom vimish-fold-show-lines t
   "Whether to show number of lines folded in fold header."
@@ -137,41 +140,37 @@ overhead is undesirable."
 (defvar vimish-fold-unfolded-keymap (make-sparse-keymap)
   "Keymap which is active when point is placed on unfolded text.")
 
-(defun vimish-fold--correct-region (beg end)
-  "Return a cons of corrected BEG and END.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; <<< Helper functions
 
-We only support folding by whole lines, so we should make sure
-that beginning and end positions are correct.  Also, sometimes
-users select region including last newline into it, they don't
-really want to include it, we correct this here."
-  (cl-destructuring-bind (beg . end)
-      (if (>= end beg)
-          (cons beg end)
-        (cons end beg))
-    (save-excursion
-      (save-restriction
-        (let ((beg* (progn (goto-char beg)
-                           (line-beginning-position)))
-              (end* (progn (goto-char end)
-                           (line-end-position))))
-          (when (or vimish-fold-include-last-empty-line
-                    (not (eq beg* end*)))
-            (narrow-to-region beg* end*)
-            (goto-char (point-min))
-            (let* ((empty-lines (reverse (cl-loop if (progn (goto-char (line-beginning-position)) (looking-at "$"))
-                                                  collect (line-number-at-pos)
-                                                  end
-                                                  until (progn (goto-char (line-end-position)) (eobp))
-                                                  do (forward-line 1))))
-                   (empty-lines-num (length empty-lines)))
-              (cl-case empty-lines-num
-                (0)
-                (1 (when (eq (line-number-at-pos (point-max)) (car empty-lines))
-                     (setq end* (1- end*))))
-                (t (when (and (eq (line-number-at-pos (point-max)) (car empty-lines))
-                              (> (- (car empty-lines) (cadr empty-lines)) 1))
-                     (setq end* (1- end*)))))))
-          (cons beg* end*))))))
+(defun vimish-fold--vimish-overlay-folded-p (overlay)
+  "Detect if given OVERLAY is folded."
+  (eq (overlay-get overlay 'type) 'vimish-fold--folded))
+
+(defun vimish-fold--vimish-overlay-unfolded-p (overlay)
+  "Detect if given OVERLAY is folded."
+  (eq (overlay-get overlay 'type) 'vimish-fold--unfolded))
+
+(defun vimish-fold--vimish-overlay-p (overlay)
+  "Detect if given OVERLAY is created by this package."
+  (memq (overlay-get overlay 'type)
+        '(vimish-fold--folded
+          vimish-fold--unfolded)))
+
+(cl-defun vimish-fold--folds-in (beg end &optional (type 'all))
+  "Return all folds exiting between BEG and END in current buffer.
+
+Set TYPE to folded or unfolded to return only folded or unfolded
+overlays.
+When TYPE is omitted function returns all fold overlays."
+  (overlay-recenter end)               ; speedup overlay lookup near end
+  (cl-remove-if-not
+   (cl-case type
+     ('folded #'vimish-fold--vimish-overlay-folded-p)
+     ('unfolded #'vimish-fold--vimish-overlay-unfolded-p)
+     (t #'vimish-fold--vimish-overlay-p))
+   (overlays-in beg end)))
 
 (defun vimish-fold--read-only (on beg end)
   "If ON is non-NIL, make text between BEG and END read-only.
@@ -183,28 +182,76 @@ If ON is NIL, make the text editable again."
           (add-text-properties beg end (list 'read-only on))
         (remove-text-properties beg end (list 'read-only on))))))
 
-(defun vimish-fold--get-header (beg end)
+(defun vimish-fold--correct-region (beg end)
+  "Return a cons of corrected BEG and END.
+
+We only support folding by whole lines, so we should make sure
+that beginning and end positions are correct.  Also, sometimes
+users select region including last newline into it, they don't
+really want to include it, we correct this here."
+  (cl-destructuring-bind (beg . end)    ; sort BEG and END
+      (if (>= end beg)
+          (cons beg end)
+        (cons end beg))
+    (save-excursion
+      (save-restriction
+        (let ((beg* (progn (goto-char beg) ; Expand BEG and END to whole lines
+                           (line-beginning-position)))
+              (end* (progn (goto-char end)
+                           (line-end-position))))
+          (when (or vimish-fold-include-last-empty-line
+                    (not (eq beg* end*)))
+            (narrow-to-region beg* end*)
+            (goto-char (point-min))
+            ;; Iterate over strings in region and find empty ones
+            (let* ((empty-lines (reverse (cl-loop if (progn (goto-char (line-beginning-position)) (looking-at "$"))
+                                                  collect (line-number-at-pos)
+                                                  end
+                                                  until (progn (goto-char (line-end-position)) (eobp))
+                                                  do (forward-line 1))))
+                   (empty-lines-num (length empty-lines)))
+              ;; Remove last line only if it is preceded by non-empty line
+              ;; https://github.com/seregaxvm/vimish-fold/issues/55
+              (cl-case empty-lines-num
+                (0)
+                (1 (when (eq (line-number-at-pos (point-max)) (car empty-lines))
+                     (setq end* (1- end*))))
+                (t (when (and (eq (line-number-at-pos (point-max)) (car empty-lines))
+                              (> (- (car empty-lines) (cadr empty-lines)) 1))
+                     (setq end* (1- end*)))))))
+          (cons beg* end*))))))
+
+(defun vimish-fold--get-header (beg end &optional buffer-or-name)
   "Extract folding header from region between BEG and END in BUFFER.
 
-If BUFFER is NIL, current buffer is used."
-  (let ((info (when vimish-fold-show-lines
-                (format "    %d lines" (count-lines beg end)))))
-    (save-excursion
-      (goto-char beg)
-      (re-search-forward "^\\([[:blank:]]*.*\\)$")
-      (concat
-       (truncate-string-to-width
-        (if (and (>= (match-beginning 1) beg)
-                 (<= (match-end 1)       end))
-            (match-string-no-properties 1)
-          vimish-fold-blank-fold-header)
-        (- (or vimish-fold-header-width
-               (window-width))
-           (length info))
-        nil
-        32 ; space
-        "…")
-       info))))
+If BUFFER-OR-NAME is nil, current buffer is used."
+  (with-current-buffer (or buffer-or-name (current-buffer))
+    (let ((info (when vimish-fold-show-lines
+                  (format "    %d lines" (count-lines beg end)))))
+      (save-excursion
+        (goto-char beg)
+        (re-search-forward "^\\([[:blank:]]*.*\\)$")
+        (concat
+         (truncate-string-to-width
+          (if (and (>= (match-beginning 1) beg)
+                   (<= (match-end 1)       end))
+              (match-string-no-properties 1)
+            vimish-fold-blank-fold-header)
+          ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=41537
+          ;; when applying folds on newly created buffer,
+          ;; `line-number-display-width' fails because window is not ready yet.
+          ;; In this case assume 5 line number chars + 2 padding chars = 7 chars
+          (- (or vimish-fold-header-width
+                 (- (window-body-width)
+                    (if (and (get-buffer-window (current-buffer))
+                               line-number-mode)
+                        (+ (line-number-display-width) 2)
+                      7)))
+             (length info))
+          nil
+          32 ; space
+          "…")
+         info)))))
 
 (defun vimish-fold--setup-fringe (overlay &optional prefix)
   "Setup fringe for OVERLAY according to user settings.
@@ -232,11 +279,27 @@ This includes fringe bitmaps and faces."
   (overlay-put overlay 'help-echo "Click to unfold the text")
   (vimish-fold--setup-fringe overlay))
 
-(defun vimish-fold--vimish-overlay-p (overlay)
-  "Detect if given OVERLAY is created by this package."
-  (memq (overlay-get overlay 'type)
-        '(vimish-fold--folded
-          vimish-fold--unfolded)))
+(defun vimish-fold--update-headers (frame)
+  "Update headers"
+  (dolist (buffer (buffer-list frame))
+    (let ((window (get-buffer-window)))
+      (when (and (not (eq (window-pixel-width-before-size-change window)
+                          (window-pixel-height window))))
+        ;; run for all buffers with changed width
+        (with-current-buffer buffer
+          (dolist (overlay (vimish-fold--folds-in (point-min)
+                                                  (point-max)
+                                                  'folded))
+            (vimish-fold--apply-cosmetic overlay
+                                         (vimish-fold--get-header
+                                          (overlay-start overlay)
+                                          (overlay-end overlay)))))))))
+
+;; >>>
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; <<< Core functions
 
 ;;;###autoload
 (defun vimish-fold (beg end)
@@ -246,10 +309,9 @@ This includes fringe bitmaps and faces."
   (cl-destructuring-bind (beg . end) (vimish-fold--correct-region beg end)
     (when (< (count-lines beg end) 2)
       (error "Nothing to fold"))
-    (dolist (overlay (overlays-in beg end))
-      (when (vimish-fold--vimish-overlay-p overlay)
+    (dolist (overlay (vimish-fold--folds-in beg end))
         (goto-char (overlay-start overlay))
-        (error "Fold already exists here")))
+        (error "Fold already exists here"))
     (vimish-fold--read-only t (max 1 (1- beg)) end)
     (let ((overlay (make-overlay beg end nil t nil)))
       (overlay-put overlay 'type 'vimish-fold--folded)
@@ -260,7 +322,7 @@ This includes fringe bitmaps and faces."
 
 (defun vimish-fold--unfold (overlay)
   "Unfold fold found by its OVERLAY type `vimish-fold--folded'."
-  (when (eq (overlay-get overlay 'type) 'vimish-fold--folded)
+  (when (vimish-fold--vimish-overlay-folded-p overlay)
     (let ((beg (overlay-start overlay))
           (end (overlay-end   overlay)))
       (vimish-fold--read-only nil (max 1 (1- beg)) end)
@@ -282,9 +344,9 @@ This includes fringe bitmaps and faces."
 
 (defun vimish-fold--refold (overlay)
   "Refold fold found by its OVERLAY type `vimish-fold--unfolded'."
-  (when (eq (overlay-get overlay 'type) 'vimish-fold--unfolded)
-    (let* ((beg (overlay-start overlay))
-           (end (overlay-end   overlay)))
+  (when (vimish-fold--vimish-overlay-unfolded-p overlay)
+    (let ((beg (overlay-start overlay))
+          (end (overlay-end   overlay)))
       (delete-overlay overlay)
       (vimish-fold beg end))))
 
@@ -301,8 +363,7 @@ This includes fringe bitmaps and faces."
 
 If OVERLAY does not represent a fold, it's ignored."
   (when (vimish-fold--vimish-overlay-p overlay)
-    (when (eq (overlay-get overlay 'type)
-              'vimish-fold--folded)
+    (when (vimish-fold--vimish-overlay-folded-p overlay)
       (vimish-fold--read-only
        nil
        (max 1 (1- (overlay-start overlay)))
@@ -315,15 +376,11 @@ If OVERLAY does not represent a fold, it's ignored."
   (interactive)
   (mapc #'vimish-fold--delete (overlays-at (point))))
 
+;; >>>
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Extra features
-
-(defun vimish-fold--folds-in (beg end)
-  "Return all folds exiting between BEG and END in current buffer."
-  (cl-remove-if-not
-   #'vimish-fold--vimish-overlay-p
-   (overlays-in beg end)))
+;; <<< Extra features
 
 ;;;###autoload
 (defun vimish-fold-unfold-all ()
@@ -358,8 +415,7 @@ If OVERLAY does not represent a fold, it's ignored."
   (when (vimish-fold--vimish-overlay-p overlay)
     (save-excursion
       (goto-char (overlay-start overlay))
-      (if (eq (overlay-get overlay 'type)
-              'vimish-fold--folded)
+      (if (vimish-fold--vimish-overlay-folded-p overlay)
           (vimish-fold-unfold)
         (vimish-fold-refold)))))
 
@@ -429,9 +485,11 @@ This feature needs `avy' package."
            folds-before-point)))
       (message "No more folds before point"))))
 
+;; >>>
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Folding marks
+;; <<< Folding marks
 
 (defcustom vimish-fold-marks '("{{{" . "}}}")
   "Strings marking beginning and end of folding region.
@@ -501,9 +559,11 @@ Mark strings are controlled by `vimish-fold-marks' customize variable."
    (cl-mapcan (lambda (x) (apply 'vimish-fold--find-marks-in-region x))
               (vimish-fold--find-gaps))))
 
+;; >>>
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Persistence
+;; <<< Persistence
 
 (defcustom vimish-fold-dir
   (file-name-as-directory (f-expand "vimish-fold" user-emacs-directory))
@@ -528,13 +588,12 @@ Elements of LIST should be of the following form:
 
   (BEG END &optional UNFOLDED)"
   (save-excursion
-    (ignore-errors
      (dolist (item list)
       (cl-destructuring-bind (beg end . rest) item
         (vimish-fold beg end)
         (when (car rest)
           (goto-char beg)
-          (vimish-fold-unfold)))))))
+          (vimish-fold-unfold))))))
 
 (defun vimish-fold--save-folds (&optional buffer-or-name)
   "Save folds in BUFFER-OR-NAME, which should have associated file.
@@ -548,8 +607,7 @@ BUFFER-OR-NAME defaults to current buffer."
           (when (vimish-fold--vimish-overlay-p overlay)
             (push (list (overlay-start overlay)
                         (overlay-end   overlay)
-                        (eq (overlay-get overlay 'type)
-                            'vimish-fold--unfolded))
+                        (vimish-fold--vimish-overlay-unfolded-p overlay))
                   regions)))
         (let ((fold-file (vimish-fold--make-file-name (f-canonical filename))))
           (if regions
@@ -563,7 +621,9 @@ BUFFER-OR-NAME defaults to current buffer."
                         (message nil))
                     (file-error
                      (message "Vimish Fold: can't write %s" fold-file)))
-                  (kill-buffer (current-buffer))))
+                  (kill-buffer (current-buffer))
+                  (message "Saved folds... %s" fold-file)
+                  (message nil)))
             (when (f-exists? fold-file)
               (f-delete fold-file))))))))
 
@@ -588,9 +648,15 @@ Return T is some folds have been restored and NIL otherwise."
                (insert-file-contents fold-file)
                (read (buffer-string))))))))))
 
-(defun vimish-fold--kill-emacs-hook ()
+(defun vimish-fold--kill-emacs ()
   "Traverse all buffers and try to save their folds."
   (mapc #'vimish-fold--save-folds (buffer-list)))
+
+;; >>>
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; <<< Mode definition
 
 ;;;###autoload
 (define-minor-mode vimish-fold-mode
@@ -621,8 +687,16 @@ For globalized version of this mode see `vimish-fold-global-mode'."
 (add-hook 'kill-buffer-hook #'vimish-fold--save-folds)
 (when vimish-fold-persist-on-saving
   (add-hook 'before-save-hook #'vimish-fold--save-folds))
-(add-hook 'kill-emacs-hook  #'vimish-fold--kill-emacs-hook)
+(add-hook 'kill-emacs-hook  #'vimish-fold--kill-emacs)
+(unless vimish-fold-header-width
+  (add-hook 'window-size-change-functions
+            #'vimish-fold--update-headers))
+
+;; >>>
 
 (provide 'vimish-fold)
 
+;; Local Variables:
+;; vimish-fold-marks: ("<<<" . ">>>")
+;; End:
 ;;; vimish-fold.el ends here
