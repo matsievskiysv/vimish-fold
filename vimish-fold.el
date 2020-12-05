@@ -609,8 +609,7 @@ For globalized version of this mode see `vimish-fold-global-mode'."
   :global nil
   (when (buffer-file-name)
     (if vimish-fold-mode
-        (progn
-          (vimish-fold--restore-folds)
+        (catch 'restore (vimish-fold--restore-folds)
           (when vimish-fold-find-marks-on-open
             (vimish-fold-from-marks)))
       (vimish-fold-delete-all))))
